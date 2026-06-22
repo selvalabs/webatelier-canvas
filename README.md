@@ -1,45 +1,32 @@
 # WebDesign AI Editor
 
-Editor visual local-first para projetos web. A aplicação abre uma página em um Chromium headed por meio do Playwright, injeta uma camada de edição visual e permite alterar elementos manualmente ou por prompt usando Gemma 4 via Ollama.
+Editor visual local-first para projetos web. A aplicação abre uma página em Chromium headed por Playwright, injeta uma camada de edição visual e permite alterações manuais ou por prompt com Gemma via Ollama.
 
 ## Estado do projeto
 
-Este repositório começa com:
+O MVP inclui launcher Playwright, runtime TypeScript injetável, seleção visual, drag, resize, rotate, smart guides, painel de propriedades, undo/redo, patches JSONL, integração Ollama, API FastAPI opcional e CI.
 
-- documentação de produto, arquitetura, sprints e QA;
-- núcleo Python organizado por portas e adaptadores;
-- launcher headed com Playwright;
-- runtime TypeScript injetável;
-- seleção visual de elementos;
-- mover, redimensionar e rotacionar;
-- smart guides, snapping de bordas/centros e indicação de distância;
-- painel manual para texto, dimensões, tipografia, cores, opacidade, alinhamento e bordas;
-- histórico local de undo/redo;
-- persistência de patches em JSONL;
-- integração inicial com Ollama usando saída JSON estruturada;
-- API FastAPI preparada para evolução futura como webservice;
-- CI para lint, testes, typecheck e build do runtime.
-
-O código é um MVP vertical. Antes de mergear, execute toda a validação local e faça a revisão manual descrita em `docs/QA_PLAN.md`.
+Antes de mergear mudanças, execute a validação local e o QA descrito em `docs/QA_PLAN.md`.
 
 ## Requisitos
 
 - Python 3.11 ou superior;
 - `uv`;
-- Node.js 20 ou superior, somente para desenvolver/recompilar o runtime;
-- Ollama em execução local;
-- um modelo Gemma disponível no Ollama, por padrão `gemma4`;
-- projeto web acessível por URL, normalmente `http://127.0.0.1:<porta>`.
+- Node.js 20 ou superior;
+- Ollama e um modelo Gemma para edição por prompt;
+- projeto web acessível por URL local.
+
+A edição manual continua disponível quando Ollama estiver desligado.
 
 ## Instalação local
 
+No Windows:
+
 ```powershell
-uv sync --extra dev
-uv run playwright install chromium
-npm ci --prefix editor-runtime
-npm run --prefix editor-runtime build
-Copy-Item .env.example .env
+.\scripts\bootstrap.ps1
 ```
+
+O script instala dependências Python e JavaScript, compila o runtime, instala Chromium e cria `.env` quando necessário.
 
 Confira os modelos disponíveis:
 
@@ -47,84 +34,76 @@ Confira os modelos disponíveis:
 ollama list
 ```
 
-Edite `.env` se o nome instalado for diferente de `gemma4`.
+Ajuste `WDA_OLLAMA_MODEL` em `.env` para o nome exato do modelo instalado.
 
-## Uso
-
-Primeiro execute o projeto web que será editado. Depois:
+## Demo em um comando
 
 ```powershell
-uv run wda doctor
-uv run wda launch --url http://127.0.0.1:3000
+.\scripts\run-demo.ps1
 ```
 
-O Chromium será aberto em modo headed. Clique em um elemento para selecioná-lo. O painel lateral permite edição manual e por prompt.
+O comando serve `examples/demo`, escolhe outra porta quando `4173` não está disponível, abre o Chromium controlado pelo Playwright, injeta o editor e encerra o servidor quando o browser fecha.
+
+Para escolher qualquer porta livre:
+
+```powershell
+uv run python -m webdesign_ai_editor demo --port 0
+```
+
+## Editar um projeto local
+
+Primeiro execute o projeto web. Depois:
+
+```powershell
+uv run python -m webdesign_ai_editor doctor
+uv run python -m webdesign_ai_editor launch --url http://127.0.0.1:3000
+```
 
 Atalhos principais:
 
-- `Escape`: desmarcar elemento;
+- `Escape`: desmarcar;
 - `Ctrl+Z`: desfazer;
 - `Ctrl+Shift+Z` ou `Ctrl+Y`: refazer;
-- `Alt+E`: alternar entre modo editar e modo interagir com a página;
-- duplo clique em texto: edição textual direta.
+- `Alt+E`: alternar editar/interagir;
+- duplo clique em texto: edição direta.
 
-## API local e futura camada de serviço
-
-O modo local usa bindings do Playwright para comunicação direta e não precisa expor uma porta de rede. A mesma camada de aplicação também pode ser iniciada como API:
+## API local
 
 ```powershell
-uv run wda serve --host 127.0.0.1 --port 8787
+uv run python -m webdesign_ai_editor serve --host 127.0.0.1 --port 8787
 ```
 
-O host padrão é exclusivamente local. Exposição remota exige autenticação, autorização, isolamento de sessões e TLS; consulte `docs/LOCAL_FIRST_AND_WEBSERVICE.md` e `docs/THREAT_MODEL.md`.
+O modo local usa bindings internos do Playwright. Consulte `docs/LOCAL_FIRST_AND_WEBSERVICE.md` antes de qualquer evolução para serviço remoto.
 
 ## Validação
 
 ```powershell
-./scripts/validate.ps1
+.\scripts\validate.ps1
 ```
 
-Ou manualmente:
+Comandos equivalentes:
 
 ```powershell
-uv run ruff check . --fix
-uv run ruff check .
-uv run pytest
-uv run mypy src
+uv run python -m ruff check .
+uv run python -m pytest
+uv run python -m mypy src
 npm run --prefix editor-runtime typecheck
 npm run --prefix editor-runtime build
 ```
 
 ## Fluxo GitHub
 
-O fluxo obrigatório é:
-
 ```text
 Issue -> Branch -> Implementação local -> Validação local -> Commit -> Push -> PR -> CI -> Revisão -> Merge -> Sync local
 ```
 
-Consulte `CONTRIBUTING.md` e `docs/DEFINITION_OF_DONE.md`.
-
 ## Escopo atual
 
-O MVP salva patches de estilo, texto e atributos. Ele ainda não reescreve automaticamente JSX, Vue SFC, templates ou folhas CSS originais. Essa etapa está planejada como exportadores específicos por stack.
+O MVP salva patches de estilo, texto e atributos. Ainda não reescreve automaticamente JSX, templates ou folhas CSS originais.
 
-## Documentação de governança
+## Documentação
 
-- `docs/DEVELOPMENT_GOVERNANCE.md`: adaptação do fluxo assistido por IA ao projeto;
-- `docs/PATCH_DELIVERY.md`: padrão de ZIP, aplicador, backup e reversão;
-- `AGENTS.md`: limites operacionais para assistentes de código.
-
-## Demo incluída
-
-Em um terminal:
-
-```powershell
-./scripts/run-demo.ps1
-```
-
-Em outro terminal:
-
-```powershell
-uv run wda launch --url http://127.0.0.1:4173
-```
+- `docs/WINDOWS_SETUP.md`: setup e demo no Windows;
+- `docs/DEVELOPMENT_GOVERNANCE.md`: processo de desenvolvimento;
+- `docs/PATCH_DELIVERY.md`: entrega por ZIP e script;
+- `AGENTS.md`: limites para assistentes de código.
