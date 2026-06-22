@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
@@ -31,8 +31,15 @@ class MemoryRepository:
     def append(self, record: PatchRecord) -> None:
         self.records.append(record)
 
-    def list_by_session(self, session_id):  # type: ignore[no-untyped-def]
+    def list_by_session(self, session_id: UUID) -> list[PatchRecord]:
         return [record for record in self.records if record.session_id == session_id]
+
+    def replace_session(self, session_id: UUID, records: list[PatchRecord]) -> None:
+        self.clear_session(session_id)
+        self.records.extend(records)
+
+    def clear_session(self, session_id: UUID) -> None:
+        self.records = [record for record in self.records if record.session_id != session_id]
 
 
 @pytest.mark.asyncio

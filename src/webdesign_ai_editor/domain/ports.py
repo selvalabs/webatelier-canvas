@@ -17,3 +17,9 @@ class PatchRepository(Protocol):
 
     def list_by_session(self, session_id: UUID) -> list[PatchRecord]:
         """Return records for a session in append order."""
+
+    def replace_session(self, session_id: UUID, records: list[PatchRecord]) -> None:
+        """Atomically replace one session with validated records."""
+
+    def clear_session(self, session_id: UUID) -> None:
+        """Remove all records for one session."""

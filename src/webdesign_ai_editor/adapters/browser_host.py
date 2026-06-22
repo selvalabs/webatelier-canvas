@@ -36,6 +36,10 @@ class BrowserEditorHost:
         self._browser_channel = browser_channel
 
     @property
+    def session_id(self) -> UUID:
+        return self._session_id
+
+    @property
     def runtime_path(self) -> Path:
         return Path(__file__).resolve().parents[1] / "static" / "editor-runtime.js"
 
@@ -98,8 +102,23 @@ class BrowserEditorHost:
             plan = await self._edit_service.plan(request)
             return plan.model_dump(mode="json")
 
+        async def session_binding(source: dict[str, Any]) -> dict[str, Any]:
+            del source
+            records = self._patch_repository.list_by_session(self._session_id)
+            return {
+                "session_id": str(self._session_id),
+                "patches": [record.model_dump(mode="json") for record in records],
+            }
+
+        async def clear_session_binding(source: dict[str, Any]) -> dict[str, bool]:
+            del source
+            self._patch_repository.clear_session(self._session_id)
+            return {"ok": True}
+
         await page.expose_binding("__wda_emit", emit_binding)
         await page.expose_binding("__wda_ai_edit", ai_binding)
+        await page.expose_binding("__wda_session_state", session_binding)
+        await page.expose_binding("__wda_clear_session", clear_session_binding)
 
         page.on(
             "console",

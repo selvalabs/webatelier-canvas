@@ -9,7 +9,7 @@ from webdesign_ai_editor.domain.models import PatchRecord
 
 
 class JsonlPatchRepository:
-    """Append-only local patch storage, one JSON object per line."""
+    """Thread-safe local patch storage, one JSON object per line."""
 
     def __init__(self, sessions_dir: Path) -> None:
         self._sessions_dir = sessions_dir
@@ -42,8 +42,21 @@ class JsonlPatchRepository:
                     ) from exc
         return records
 
-    def _path_for(self, session_id: UUID) -> Path:
-        return self._sessions_dir / f"{session_id}.jsonl"
+    def replace_session(self, session_id: UUID, records: list[PatchRecord]) -> None:
+        if any(record.session_id != session_id for record in records):
+            raise ValueError("all records must belong to the target session")
+
+        path = self._path_for(session_id)
+        temporary = path.with_suffix(".jsonl.tmp")
+        payload = "".join(record.model_dump_json() + "\n" for record in records)
+        with self._lock:
+            temporary.write_text(payload, encoding="utf-8", newline="\n")
+            temporary.replace(path)
+
+    def clear_session(self, session_id: UUID) -> None:
+        path = self._path_for(session_id)
+        with self._lock:
+            path.unlink(missing_ok=True)
 
     def export_session(self, session_id: UUID, destination: Path) -> Path:
         records = self.list_by_session(session_id)
@@ -59,3 +72,6 @@ class JsonlPatchRepository:
             encoding="utf-8",
         )
         return destination
+
+    def _path_for(self, session_id: UUID) -> Path:
+        return self._sessions_dir / f"{session_id}.jsonl"

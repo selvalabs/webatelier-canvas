@@ -14,6 +14,12 @@ class NullRepository:
         del session_id
         return []
 
+    def replace_session(self, session_id: UUID, records: list[PatchRecord]) -> None:
+        del session_id, records
+
+    def clear_session(self, session_id: UUID) -> None:
+        del session_id
+
 
 class NullService:
     async def plan(self, request: AIEditRequest) -> EditPlan:
@@ -41,3 +47,9 @@ def test_enhancement_runtime_is_packaged() -> None:
 
     assert host.enhancement_runtime_path.is_file()
     assert host.enhancement_runtime_path.name == "editor-enhancements.js"
+
+
+def test_host_exposes_session_identifier() -> None:
+    host = build_host()
+
+    assert isinstance(host.session_id, UUID)
