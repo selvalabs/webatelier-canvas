@@ -32,6 +32,7 @@ jobs:
           cache-dependency-path: editor-runtime/package-lock.json
       - run: npm ci --prefix editor-runtime
       - run: npm run --prefix editor-runtime typecheck
+      - run: node --check src/webdesign_ai_editor/static/editor-enhancements.js
       - run: npm run --prefix editor-runtime build
       - name: Verify committed runtime bundle
         run: git diff --exit-code -- src/webdesign_ai_editor/static/editor-runtime.js src/webdesign_ai_editor/static/editor-runtime.js.map
