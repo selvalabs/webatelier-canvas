@@ -34,6 +34,7 @@ try {
     Invoke-NativeCommand "uv" @("run", "python", "-m", "pytest")
     Invoke-NativeCommand "uv" @("run", "python", "-m", "mypy", "src")
     Invoke-NativeCommand "npm" @("run", "--prefix", "editor-runtime", "typecheck")
+    Invoke-NativeCommand "node" @("--check", "src/webdesign_ai_editor/static/editor-enhancements.js")
 
     if (-not $SkipRuntimeBuild) {
         Invoke-NativeCommand "npm" @("run", "--prefix", "editor-runtime", "build")
