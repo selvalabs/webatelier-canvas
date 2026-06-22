@@ -9,6 +9,7 @@ from uuid import UUID
 from playwright.async_api import Browser, Page, async_playwright
 from pydantic import ValidationError
 
+from webdesign_ai_editor.adapters.enhancement_loader import install_editor_enhancements
 from webdesign_ai_editor.domain.models import (
     AIEditRequest,
     BridgePatchMessage,
@@ -38,6 +39,10 @@ class BrowserEditorHost:
     def runtime_path(self) -> Path:
         return Path(__file__).resolve().parents[1] / "static" / "editor-runtime.js"
 
+    @property
+    def enhancement_runtime_path(self) -> Path:
+        return Path(__file__).resolve().parents[1] / "static" / "editor-enhancements.js"
+
     async def run(self, url: str) -> None:
         runtime_path = self.runtime_path
         if not runtime_path.is_file():
@@ -58,6 +63,7 @@ class BrowserEditorHost:
                 await self._wire_page(page)
                 await page.add_init_script(path=runtime_path)
                 await page.goto(url, wait_until="domcontentloaded")
+                await install_editor_enhancements(page, self.enhancement_runtime_path)
                 LOGGER.info("Editor aberto em %s", url)
                 print(f"Sessão: {self._session_id}")
                 print(f"Patches: {self._session_id}.jsonl")
