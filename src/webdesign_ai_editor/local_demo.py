@@ -10,8 +10,8 @@ from types import TracebackType
 class QuietRequestHandler(SimpleHTTPRequestHandler):
     """Serve demo assets without writing one log line per request."""
 
-    def log_message(self, format: str, *args: object) -> None:  # noqa: A002
-        del format, args
+    def log_message(self, _format: str, *_args: object) -> None:
+        return
 
 
 class LocalDemoServer:
