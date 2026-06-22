@@ -19,11 +19,9 @@ def test_local_demo_server_serves_index(tmp_path: Path) -> None:
     root = make_demo(tmp_path)
 
     with LocalDemoServer(root, preferred_port=0) as server:
-        with urlopen(server.url, timeout=2) as response:  # noqa: S310
-            body = response.read().decode("utf-8")
-
-        assert response.status == 200
-        assert "demo-ready" in body
+        with urlopen(server.url, timeout=2) as response:
+            assert response.status == 200
+            assert "demo-ready" in response.read().decode("utf-8")
         assert server.port > 0
 
 
