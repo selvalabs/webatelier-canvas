@@ -5,7 +5,7 @@ import ipaddress
 import logging
 from pathlib import Path
 from urllib.parse import urlparse
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import typer
 import uvicorn
@@ -74,6 +74,7 @@ def build_editor_host(
     *,
     model: str | None,
     channel: str | None,
+    session_id: UUID | None,
 ) -> BrowserEditorHost:
     if model:
         settings.ollama_model = model
@@ -82,7 +83,7 @@ def build_editor_host(
     provider = OllamaClient(settings)
     service = AIEditService(provider)
     return BrowserEditorHost(
-        session_id=uuid4(),
+        session_id=session_id or uuid4(),
         patch_repository=repository,
         edit_service=service,
         browser_channel=channel,
@@ -94,10 +95,16 @@ def run_editor(
     *,
     model: str | None,
     channel: str | None,
+    session_id: UUID | None,
 ) -> None:
     settings = Settings()
     configure_logging(settings.log_level)
-    host = build_editor_host(settings, model=model, channel=channel)
+    host = build_editor_host(
+        settings,
+        model=model,
+        channel=channel,
+        session_id=session_id,
+    )
 
     try:
         asyncio.run(host.run(url))
@@ -113,10 +120,20 @@ def launch(
     url: str = typer.Option(..., "--url", "-u", help="URL do projeto web."),
     model: str | None = typer.Option(None, help="Sobrescreve WDA_OLLAMA_MODEL."),
     channel: str | None = typer.Option(None, help="Canal Playwright opcional, como chrome."),
+    session_id: UUID | None = typer.Option(
+        None,
+        "--session-id",
+        help="Reabre uma sessão existente; omita para criar outra.",
+    ),
 ) -> None:
     """Open a headed Chromium and inject the visual editor."""
 
-    run_editor(validate_http_url(url), model=model, channel=channel)
+    run_editor(
+        validate_http_url(url),
+        model=model,
+        channel=channel,
+        session_id=session_id,
+    )
 
 
 @app.command()
@@ -138,6 +155,11 @@ def demo(
     ),
     model: str | None = typer.Option(None, help="Sobrescreve WDA_OLLAMA_MODEL."),
     channel: str | None = typer.Option(None, help="Canal Playwright opcional, como chrome."),
+    session_id: UUID | None = typer.Option(
+        None,
+        "--session-id",
+        help="Reabre uma sessão existente; omita para criar outra.",
+    ),
 ) -> None:
     """Serve the bundled demo and launch the editor with one command."""
 
@@ -152,10 +174,49 @@ def demo(
                     f"[yellow]Porta {port} indisponível; usando {server.port}.[/yellow]"
                 )
             console.print(f"[green]Demo:[/green] {server.url}")
-            run_editor(server.url, model=model, channel=channel)
+            run_editor(
+                server.url,
+                model=model,
+                channel=channel,
+                session_id=session_id,
+            )
     except OSError as exc:
         console.print(f"[red]Falha ao iniciar o demo local:[/red] {exc}")
         raise typer.Exit(code=1) from exc
+
+
+@app.command("sessions")
+def list_sessions() -> None:
+    """List locally persisted editing sessions."""
+
+    settings = Settings()
+    repository = JsonlPatchRepository(settings.sessions_dir)
+    entries: list[tuple[UUID, int]] = []
+    for path in sorted(settings.sessions_dir.glob("*.jsonl")):
+        try:
+            session_id = UUID(path.stem)
+        except ValueError:
+            continue
+        entries.append((session_id, len(repository.list_by_session(session_id))))
+
+    if not entries:
+        console.print("Nenhuma sessão persistida.")
+        return
+    for session_id, count in entries:
+        console.print(f"{session_id}  {count} patches")
+
+
+@app.command("export-session")
+def export_session(
+    session_id: UUID = typer.Option(..., "--session-id"),
+    output: Path = typer.Option(Path("session-patches.json"), "--output", "-o"),
+) -> None:
+    """Export a persisted session as reviewable JSON."""
+
+    settings = Settings()
+    repository = JsonlPatchRepository(settings.sessions_dir)
+    destination = repository.export_session(session_id, output.expanduser().resolve())
+    console.print(f"[green]Exportado:[/green] {destination}")
 
 
 @app.command()

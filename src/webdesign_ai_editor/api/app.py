@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Response, status
 
 from webdesign_ai_editor.adapters.jsonl_patch_repository import JsonlPatchRepository
 from webdesign_ai_editor.adapters.ollama import OllamaClient, OllamaError
@@ -57,6 +57,28 @@ def create_app(
     @app.get("/api/v1/patches/{session_id}", response_model=list[PatchRecord])
     async def list_patches(session_id: UUID) -> list[PatchRecord]:
         return resolved_repository.list_by_session(session_id)
+
+    @app.put("/api/v1/patches/{session_id}", response_model=list[PatchRecord])
+    async def replace_patches(
+        session_id: UUID,
+        records: list[PatchRecord],
+    ) -> list[PatchRecord]:
+        if any(record.session_id != session_id for record in records):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="every patch must belong to the path session",
+            )
+        resolved_repository.replace_session(session_id, records)
+        return records
+
+    @app.delete(
+        "/api/v1/patches/{session_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
+        response_class=Response,
+    )
+    async def clear_patches(session_id: UUID) -> Response:
+        resolved_repository.clear_session(session_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     return app
 
