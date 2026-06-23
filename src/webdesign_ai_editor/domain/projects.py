@@ -24,26 +24,12 @@ class ProjectCreate(StrictProjectModel):
     @field_validator("root_path")
     @classmethod
     def validate_root_path(cls, value: str) -> str:
-        if "\x00" in value:
-            raise ValueError("project path cannot contain a null byte")
-        return value
+        return validate_project_path(value)
 
     @field_validator("local_url")
     @classmethod
     def validate_local_url(cls, value: str) -> str:
-        parsed = urlparse(value)
-        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-            raise ValueError("project URL must be a complete http(s) URL")
-        if parsed.username or parsed.password:
-            raise ValueError("project URL cannot contain credentials")
-        host = parsed.hostname.casefold()
-        try:
-            loopback = ipaddress.ip_address(host).is_loopback
-        except ValueError:
-            loopback = host == "localhost"
-        if not loopback:
-            raise ValueError("project URL must use a loopback host")
-        return value.rstrip("/")
+        return validate_loopback_url(value)
 
 
 class ProjectUpdate(StrictProjectModel):
@@ -55,16 +41,12 @@ class ProjectUpdate(StrictProjectModel):
     @field_validator("root_path")
     @classmethod
     def validate_optional_root(cls, value: str | None) -> str | None:
-        if value is not None and "\x00" in value:
-            raise ValueError("project path cannot contain a null byte")
-        return value
+        return validate_project_path(value) if value is not None else None
 
     @field_validator("local_url")
     @classmethod
     def validate_optional_url(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        return ProjectCreate.validate_local_url(value)
+        return validate_loopback_url(value) if value is not None else None
 
 
 class ProjectProfile(StrictProjectModel):
@@ -77,3 +59,35 @@ class ProjectProfile(StrictProjectModel):
     session_ids: list[UUID] = Field(default_factory=list, max_length=500)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_validator("root_path")
+    @classmethod
+    def validate_stored_root(cls, value: str) -> str:
+        return validate_project_path(value)
+
+    @field_validator("local_url")
+    @classmethod
+    def validate_stored_url(cls, value: str) -> str:
+        return validate_loopback_url(value)
+
+
+def validate_project_path(value: str) -> str:
+    if "\x00" in value:
+        raise ValueError("project path cannot contain a null byte")
+    return value
+
+
+def validate_loopback_url(value: str) -> str:
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("project URL must be a complete http(s) URL")
+    if parsed.username or parsed.password:
+        raise ValueError("project URL cannot contain credentials")
+    host = parsed.hostname.casefold()
+    try:
+        loopback = ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        loopback = host == "localhost"
+    if not loopback:
+        raise ValueError("project URL must use a loopback host")
+    return value.rstrip("/")
