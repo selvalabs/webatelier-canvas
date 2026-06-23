@@ -12,6 +12,8 @@ The JS Hub is not a general-purpose JavaScript console. It exposes reviewed, dec
 
 Each tool has metadata, bounded text fields, a structured element builder, a preview and explicit insertion approval. Insertions use the same validated `insert_element` contract as the element palette, so they enter the session timeline and remain editable.
 
+Tool behavior is attached by the trusted runtime after insertion. The generated page structure remains plain HTML and CSS, while the runtime behavior can be reviewed independently.
+
 ## Security rules
 
 A registered tool must:
