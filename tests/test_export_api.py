@@ -78,4 +78,5 @@ async def test_export_endpoint_writes_package_to_local_data_dir(tmp_path: Path) 
         "metadata.json",
         "styles.css",
     ]
-    assert Path(payload["archive_path"]).is_file()
+    archive_exists = await asyncio.to_thread(Path(payload["archive_path"]).is_file)
+    assert archive_exists
