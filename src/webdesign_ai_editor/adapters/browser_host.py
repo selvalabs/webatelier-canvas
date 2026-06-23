@@ -10,6 +10,8 @@ from playwright.async_api import Browser, Page, async_playwright
 from pydantic import ValidationError
 
 from webdesign_ai_editor.adapters.enhancement_loader import install_editor_enhancements
+from webdesign_ai_editor.config import Settings
+from webdesign_ai_editor.domain.export_models import ExportPayload
 from webdesign_ai_editor.domain.models import (
     AIEditRequest,
     BridgePatchMessage,
@@ -17,6 +19,7 @@ from webdesign_ai_editor.domain.models import (
 )
 from webdesign_ai_editor.domain.ports import PatchRepository
 from webdesign_ai_editor.services.edit_service import AIEditService
+from webdesign_ai_editor.services.exporter import ExportService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -115,10 +118,25 @@ class BrowserEditorHost:
             self._patch_repository.clear_session(self._session_id)
             return {"ok": True}
 
+        async def export_binding(source: dict[str, Any], payload: Any) -> dict[str, Any]:
+            del source
+            try:
+                request = ExportPayload.model_validate(payload)
+                settings = Settings()
+                result = ExportService(settings.data_dir / "exports").export(request)
+                return {"ok": True, **result.model_dump(mode="json")}
+            except (ValidationError, ValueError) as exc:
+                LOGGER.warning("Rejected export payload: %s", exc)
+                return {"ok": False, "error": str(exc)}
+            except Exception:
+                LOGGER.exception("Failed to export project package")
+                return {"ok": False, "error": "project export failed"}
+
         await page.expose_binding("__wda_emit", emit_binding)
         await page.expose_binding("__wda_ai_edit", ai_binding)
         await page.expose_binding("__wda_session_state", session_binding)
         await page.expose_binding("__wda_clear_session", clear_session_binding)
+        await page.expose_binding("__wda_export_package", export_binding)
 
         page.on(
             "console",
