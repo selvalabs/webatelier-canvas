@@ -9,7 +9,32 @@ permissions:
   contents: read
 
 jobs:
+  pytest-exporter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: uv run pytest tests/test_exporter.py -q
+
+  pytest-export-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: uv run pytest tests/test_export_api.py -q
+
+  pytest-existing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: uv run pytest --ignore=tests/test_exporter.py --ignore=tests/test_export_api.py -q
+
   python:
+    needs: [pytest-exporter, pytest-export-api, pytest-existing]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
