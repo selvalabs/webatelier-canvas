@@ -85,7 +85,7 @@
           styles: { position: "relative" },
           children: [
             { tag: "button", text: values.label, attributes: { class: "wda-tool-menu-toggle", type: "button", "aria-label": `Alternar ${values.label}` }, styles: { padding: "10px 14px", borderRadius: "8px", borderWidth: "1px", borderStyle: "solid", borderColor: "#94a3b8", fontWeight: "700" } },
-            { tag: "ul", attributes: { class: "wda-tool-menu-list" }, styles: { display: "none", position: "absolute", top: "48px", left: "0", minWidth: "200px", margin: "0", padding: "12px", borderRadius: "10px", backgroundColor: "#ffffff", boxShadow: "0 16px 40px rgb(15 23 42 / 18%)", zIndex: "50" }, children: items.map((item) => textNode("li", item, "", { padding: "8px", listStyle: "none" })) }
+            { tag: "ul", attributes: { class: "wda-tool-menu-list" }, styles: { display: "none", position: "absolute", top: "48px", left: "0", minWidth: "200px", margin: "0", padding: "12px", borderRadius: "10px", backgroundColor: "#ffffff", boxShadow: "0 16px 40px rgb(15 23 42 / 18%)", zIndex: "50" }, children: items.map((item) => textNode("li", item, "", { padding: "8px" })) }
           ]
         };
       }
