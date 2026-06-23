@@ -18,7 +18,11 @@ def make_payload(**overrides: object) -> ExportPayload:
         "page_title": "Demo",
         "description": "Export test",
         "source_url": "http://127.0.0.1:4173",
-        "html": "<!doctype html><html><head><link rel=\"icon\" href=\"__WDA_FAVICON_PATH__\"></head><body><h1>Demo</h1></body></html>",
+        "html": (
+            "<!doctype html><html><head>"
+            '<link rel="icon" href="__WDA_FAVICON_PATH__">'
+            "</head><body><h1>Demo</h1></body></html>"
+        ),
         "css": "h1 { font-size: 48px; }",
         "warnings": ["Scripts were removed."],
     }
@@ -35,11 +39,17 @@ def test_export_service_builds_deterministic_zip(tmp_path: Path) -> None:
     second = service.export(payload)
 
     assert first_bytes == second.archive_path.read_bytes()
-    assert first.files == ["REPORT.md", "index.html", "metadata.json", "styles.css"]
+    assert first.files == [
+        "REPORT.md",
+        "index.html",
+        "metadata.json",
+        "styles.css",
+    ]
 
     with ZipFile(first.archive_path) as archive:
         assert archive.namelist() == sorted(archive.namelist())
-        assert archive.read("index.html").decode("utf-8").startswith("<!doctype html>")
+        exported_html = archive.read("index.html").decode("utf-8")
+        assert exported_html.startswith("<!doctype html>")
         assert "font-size: 48px" in archive.read("styles.css").decode("utf-8")
         assert "Scripts were removed." in archive.read("REPORT.md").decode("utf-8")
 
