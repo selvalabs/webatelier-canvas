@@ -5,6 +5,7 @@
 
   const tags = new Set("a article button div h1 h2 h3 img li ol p section span ul".split(" "));
   const attributes = new Set("alt aria-label class href loading rel role src target title type".split(" "));
+  const styles = new Set("alignItems alignSelf backgroundColor borderColor borderRadius borderStyle borderWidth bottom boxShadow color display flexDirection flexGrow flexShrink flexWrap fontFamily fontSize fontStyle fontWeight gap height justifyContent left letterSpacing lineHeight margin marginBottom marginLeft marginRight marginTop maxHeight maxWidth minHeight minWidth objectFit opacity overflow padding paddingBottom paddingLeft paddingRight paddingTop position right textAlign textDecoration textTransform top transform transformOrigin whiteSpace width zIndex".split(" "));
   const positions = new Set(["inside_start", "inside_end", "before", "after"]);
   const state = { api: null, selected: null, undo: [], redo: [], attempts: 0 };
 
@@ -25,13 +26,20 @@
   }
 
   async function insert(raw, position = "inside_end", source = "manual") {
-    const target = state.selected;
-    if (!target) throw new Error("Selecione um elemento de referência.");
+    const selector = state.api.getSelector();
+    return insertAt(selector, raw, position, source, true);
+  }
+
+  async function insertAt(selector, raw, position = "inside_end", source = "system", select = false) {
+    const target = selector ? query(selector) : state.selected;
+    if (!(target instanceof HTMLElement || target instanceof SVGElement)) {
+      throw new Error("Elemento de referência não encontrado.");
+    }
     if (!positions.has(position)) throw new Error("Posição de inserção inválida.");
     const spec = normalize(raw, 1, { count: 0 });
     const node = createNode(spec);
     place(target, node, position);
-    const record = { selector: state.api.getSelector(), position, spec, node };
+    const record = { selector: selector || state.api.getSelector(), position, spec, node };
     state.undo.push(record);
     state.redo = [];
     await state.api.emitPatch({
@@ -42,10 +50,21 @@
       before: null,
       after: JSON.stringify(spec)
     });
-    selectNode(node);
+    if (select) selectNode(node);
     state.api.setStatus("Elemento inserido.", "success");
     announceHistory();
     return node;
+  }
+
+  async function replay(patch) {
+    if (!patch || patch.action !== "insert_element" || !patch.after) return null;
+    return insertAt(
+      patch.selector,
+      JSON.parse(patch.after),
+      patch.property || "inside_end",
+      "system",
+      false
+    );
   }
 
   async function applyActions(actions, source = "ai") {
@@ -88,19 +107,28 @@
     if (counter.count > 40) throw new Error("Estrutura grande demais.");
     const tag = String(raw.tag || "").toLowerCase();
     if (!tags.has(tag)) throw new Error(`Tag não permitida: ${tag}`);
+
     const attrs = {};
-    for (const [name, value] of Object.entries(raw.attributes || {})) {
-      if (attributes.has(name) && !name.startsWith("on")) attrs[name] = String(value).slice(0, 5000);
+    for (const [nameRaw, valueRaw] of Object.entries(raw.attributes || {})) {
+      const name = String(nameRaw).toLowerCase();
+      const value = String(valueRaw).slice(0, 5000);
+      if (!attributes.has(name) || name.startsWith("on")) throw new Error(`Atributo não permitido: ${name}`);
+      if (!safeAttribute(value)) throw new Error(`Valor inseguro para ${name}`);
+      attrs[name] = value;
     }
-    const styles = {};
-    for (const [name, value] of Object.entries(raw.styles || {})) {
-      const text = String(value).slice(0, 500);
-      if (!/[<>]/.test(text)) styles[name] = text;
+
+    const inline = {};
+    for (const [name, valueRaw] of Object.entries(raw.styles || {})) {
+      const value = String(valueRaw).slice(0, 500);
+      if (!styles.has(name)) throw new Error(`Propriedade não permitida: ${name}`);
+      if (!safeStyle(value)) throw new Error(`Valor CSS inseguro para ${name}`);
+      inline[name] = value;
     }
+
     const children = Array.isArray(raw.children)
       ? raw.children.slice(0, 12).map((child) => normalize(child, depth + 1, counter))
       : [];
-    return { tag, text: String(raw.text || "").slice(0, 5000), attributes: attrs, styles, children };
+    return { tag, text: String(raw.text || "").slice(0, 5000), attributes: attrs, styles: inline, children };
   }
 
   function createNode(spec) {
@@ -130,9 +158,19 @@
     window.dispatchEvent(new CustomEvent("wda:insertion-history", { detail: { canUndo: state.undo.length > 0, canRedo: state.redo.length > 0 } }));
   }
 
+  function safeStyle(value) {
+    const text = value.toLowerCase();
+    return !["javascript:", "vbscript:", "expression(", "@import", "<", ">", "url("].some((part) => text.includes(part));
+  }
+
+  function safeAttribute(value) {
+    const text = value.trim().toLowerCase();
+    return !text.startsWith("javascript:") && !text.startsWith("vbscript:") && !text.startsWith("data:text/html") && !text.includes("<script");
+  }
+
   function query(selector) { try { return document.querySelector(selector); } catch { return null; } }
   function kebab(value) { return value.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`); }
-  function expose() { window.__WDA_ELEMENTS_API__ = { insert, applyActions, undo, redo, normalize: (value) => normalize(value, 1, { count: 0 }) }; }
+  function expose() { window.__WDA_ELEMENTS_API__ = { insert, insertAt, replay, applyActions, undo, redo, normalize: (value) => normalize(value, 1, { count: 0 }) }; }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();
