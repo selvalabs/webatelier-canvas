@@ -17,6 +17,27 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --frozen --extra dev
+      - name: Probe export models
+        continue-on-error: true
+        run: uv run ruff check src/webdesign_ai_editor/domain/export_models.py
+      - name: Probe exporter service
+        continue-on-error: true
+        run: uv run ruff check src/webdesign_ai_editor/services/exporter.py
+      - name: Probe browser host
+        continue-on-error: true
+        run: uv run ruff check src/webdesign_ai_editor/adapters/browser_host.py
+      - name: Probe API app
+        continue-on-error: true
+        run: uv run ruff check src/webdesign_ai_editor/api/app.py
+      - name: Probe export CLI
+        continue-on-error: true
+        run: uv run ruff check src/webdesign_ai_editor/export_cli.py
+      - name: Probe exporter tests
+        continue-on-error: true
+        run: uv run ruff check tests/test_exporter.py
+      - name: Probe export API tests
+        continue-on-error: true
+        run: uv run ruff check tests/test_export_api.py
       - run: uv run ruff check .
       - run: uv run pytest
       - run: uv run mypy src
