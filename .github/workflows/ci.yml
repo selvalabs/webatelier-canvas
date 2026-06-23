@@ -20,8 +20,32 @@ jobs:
       - run: uv run ruff check .
       - name: Test insertion models
         run: uv run pytest tests/test_element_insertion_models.py -q
-      - name: Test existing Python suite
-        run: uv run pytest --ignore=tests/test_element_insertion_models.py -q
+      - name: Probe API tests
+        continue-on-error: true
+        run: uv run pytest tests/test_api.py -q
+      - name: Probe browser host tests
+        continue-on-error: true
+        run: uv run pytest tests/test_browser_host.py -q
+      - name: Probe CLI tests
+        continue-on-error: true
+        run: uv run pytest tests/test_cli.py -q
+      - name: Probe domain model tests
+        continue-on-error: true
+        run: uv run pytest tests/test_domain_models.py -q
+      - name: Probe JSONL repository tests
+        continue-on-error: true
+        run: uv run pytest tests/test_jsonl_patch_repository.py -q
+      - name: Probe local demo tests
+        continue-on-error: true
+        run: uv run pytest tests/test_local_demo.py -q
+      - name: Probe Ollama tests
+        continue-on-error: true
+        run: uv run pytest tests/test_ollama.py -q
+      - name: Probe patch session API tests
+        continue-on-error: true
+        run: uv run pytest tests/test_patch_session_api.py -q
+      - name: Test complete Python suite
+        run: uv run pytest -q
       - run: uv run mypy src
 
   runtime:
