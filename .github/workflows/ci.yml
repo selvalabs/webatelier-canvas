@@ -9,24 +9,24 @@ permissions:
   contents: read
 
 jobs:
-  ruff-src:
+  ruff-test-imports:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen --extra dev
-      - run: uv run ruff check src
+      - run: uv run ruff check tests --select I
 
-  ruff-tests:
+  ruff-test-other:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen --extra dev
-      - run: uv run ruff check tests
+      - run: uv run ruff check tests --ignore I
 
   python:
-    needs: [ruff-src, ruff-tests]
+    needs: [ruff-test-imports, ruff-test-other]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
