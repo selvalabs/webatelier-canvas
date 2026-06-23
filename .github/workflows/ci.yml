@@ -9,7 +9,32 @@ permissions:
   contents: read
 
 jobs:
+  ruff-prompting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: uv run ruff check src/webdesign_ai_editor/services/prompting.py
+
+  ruff-js-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: uv run ruff check tests/test_js_hub_security.py
+
+  ruff-rest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: uv run ruff check . --exclude test_js_hub_security.py --exclude prompting.py
+
   python:
+    needs: [ruff-prompting, ruff-js-test, ruff-rest]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
