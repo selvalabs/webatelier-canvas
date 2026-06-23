@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -14,6 +15,7 @@ from webdesign_ai_editor.domain.models import AIEditRequest, EditPlan, PatchReco
 class NoopProvider:
     async def create_edit_plan(self, request: AIEditRequest) -> EditPlan:
         del request
+        await asyncio.sleep(0)
         return EditPlan.model_validate(
             {
                 "summary": "No-op",
@@ -41,8 +43,12 @@ class MemoryRepository:
 @pytest.mark.asyncio
 async def test_project_api_crud_and_session_association(tmp_path: Path) -> None:
     root = tmp_path / "site"
-    root.mkdir()
-    (root / "index.html").write_text("<h1>Site</h1>", encoding="utf-8")
+    await asyncio.to_thread(root.mkdir)
+    await asyncio.to_thread(
+        (root / "index.html").write_text,
+        "<h1>Site</h1>",
+        encoding="utf-8",
+    )
     app = create_app(
         settings=Settings(data_dir=tmp_path / "data"),
         ai_provider=NoopProvider(),
@@ -81,6 +87,7 @@ async def test_project_api_crud_and_session_association(tmp_path: Path) -> None:
     assert listed.json()[0]["id"] == project_id
     assert updated.json()["name"] == "Renamed site"
     assert attached.json()["session_ids"] == [str(session_id)]
-    assert Path(workspace.json()["sessions"]).is_dir()
+    sessions_path = Path(workspace.json()["sessions"])
+    assert await asyncio.to_thread(sessions_path.is_dir)
     assert removed.status_code == 204
     assert missing.status_code == 404
