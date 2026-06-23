@@ -9,43 +9,24 @@ permissions:
   contents: read
 
 jobs:
-  discover-python:
+  ruff-src:
     runs-on: ubuntu-latest
-    outputs:
-      files: ${{ steps.collect.outputs.files }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: collect
-        shell: bash
-        run: |
-          files=$(python - <<'PY'
-          import json
-          from pathlib import Path
-          roots = [Path('src'), Path('tests')]
-          paths = [str(path) for root in roots for path in sorted(root.rglob('*.py'))]
-          print(json.dumps(paths))
-          PY
-          )
-          echo "files=$files" >> "$GITHUB_OUTPUT"
-
-  lint-files:
-    needs: discover-python
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        file: ${{ fromJSON(needs.discover-python.outputs.files) }}
-    name: ruff (${{ matrix.file }})
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
       - run: uv sync --frozen --extra dev
-      - run: uv run ruff check "${{ matrix.file }}"
+      - run: uv run ruff check src
+
+  ruff-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: uv run ruff check tests
 
   python:
-    needs: lint-files
+    needs: [ruff-src, ruff-tests]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
