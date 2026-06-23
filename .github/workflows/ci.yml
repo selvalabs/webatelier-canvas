@@ -18,7 +18,10 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen --extra dev
       - run: uv run ruff check .
-      - run: uv run pytest
+      - name: Test insertion models
+        run: uv run pytest tests/test_element_insertion_models.py -q
+      - name: Test existing Python suite
+        run: uv run pytest --ignore=tests/test_element_insertion_models.py -q
       - run: uv run mypy src
 
   runtime:
