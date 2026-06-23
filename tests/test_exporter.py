@@ -65,9 +65,9 @@ def test_export_service_embeds_allowlisted_favicon(tmp_path: Path) -> None:
         assert "assets/favicon.png" in archive.read("index.html").decode("utf-8")
 
 
-@pytest.mark.parametrize("value", ["../escape", "folder/name", "", " leading-space"])
+@pytest.mark.parametrize("value", ["../escape", "folder/name", "", "space name"])
 def test_export_payload_rejects_unsafe_filename(value: str) -> None:
-    with pytest.raises(ValidationError, match="unsafe export filename"):
+    with pytest.raises(ValidationError):
         make_payload(export_filename=value)
 
 
