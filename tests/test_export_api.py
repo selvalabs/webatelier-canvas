@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from uuid import UUID
 
@@ -14,6 +15,7 @@ from webdesign_ai_editor.domain.models import AIEditRequest, EditPlan, PatchReco
 class NoopProvider:
     async def create_edit_plan(self, request: AIEditRequest) -> EditPlan:
         del request
+        await asyncio.sleep(0)
         return EditPlan.model_validate(
             {
                 "summary": "No-op",
@@ -58,7 +60,10 @@ async def test_export_endpoint_writes_package_to_local_data_dir(tmp_path: Path) 
                 "page_title": "API Export",
                 "description": "API test",
                 "source_url": "http://127.0.0.1:4173",
-                "html": "<!doctype html><html><head></head><body>API</body></html>",
+                "html": (
+                    "<!doctype html><html><head></head>"
+                    "<body>API</body></html>"
+                ),
                 "css": "body { margin: 0; }",
                 "favicon": "",
                 "warnings": [],
@@ -67,5 +72,10 @@ async def test_export_endpoint_writes_package_to_local_data_dir(tmp_path: Path) 
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["files"] == ["REPORT.md", "index.html", "metadata.json", "styles.css"]
+    assert payload["files"] == [
+        "REPORT.md",
+        "index.html",
+        "metadata.json",
+        "styles.css",
+    ]
     assert Path(payload["archive_path"]).is_file()
