@@ -9,24 +9,56 @@ permissions:
   contents: read
 
 jobs:
-  ruff-test-imports:
+  ruff-ef:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen --extra dev
-      - run: uv run ruff check tests --select I
+      - run: uv run ruff check tests --select E,F
 
-  ruff-test-other:
+  ruff-up:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen --extra dev
-      - run: uv run ruff check tests --ignore I
+      - run: uv run ruff check tests --select UP
+
+  ruff-b:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: uv run ruff check tests --select B
+
+  ruff-sim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: uv run ruff check tests --select SIM
+
+  ruff-async:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: uv run ruff check tests --select ASYNC
+
+  ruff-ruf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: uv run ruff check tests --select RUF
 
   python:
-    needs: [ruff-test-imports, ruff-test-other]
+    needs: [ruff-ef, ruff-up, ruff-b, ruff-sim, ruff-async, ruff-ruf]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
