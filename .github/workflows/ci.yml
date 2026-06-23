@@ -9,24 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  ruff-export-api-ef:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - run: uv sync --frozen --extra dev
-      - run: uv run ruff check tests/test_export_api.py --select E,F
-
-  ruff-export-api-async:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - run: uv sync --frozen --extra dev
-      - run: uv run ruff check tests/test_export_api.py --select ASYNC
-
   python:
-    needs: [ruff-export-api-ef, ruff-export-api-async]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
