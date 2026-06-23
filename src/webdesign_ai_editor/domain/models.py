@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
@@ -75,6 +76,43 @@ ALLOWED_ATTRIBUTES = frozenset(
     }
 )
 
+ALLOWED_INSERT_TAGS = frozenset(
+    {
+        "a",
+        "article",
+        "button",
+        "div",
+        "h1",
+        "h2",
+        "h3",
+        "img",
+        "li",
+        "ol",
+        "p",
+        "section",
+        "span",
+        "ul",
+    }
+)
+
+ALLOWED_INSERT_ATTRIBUTES = frozenset(
+    {
+        "alt",
+        "aria-label",
+        "class",
+        "href",
+        "loading",
+        "rel",
+        "role",
+        "src",
+        "target",
+        "title",
+        "type",
+    }
+)
+
+INSERT_POSITIONS = frozenset({"inside_start", "inside_end", "before", "after"})
+
 FORBIDDEN_VALUE_FRAGMENTS = (
     "@import",
     "behavior:",
@@ -142,12 +180,7 @@ class SetStyleAction(StrictModel):
     @field_validator("value")
     @classmethod
     def validate_value(cls, value: str) -> str:
-        lowered = value.casefold()
-        if any(fragment in lowered for fragment in FORBIDDEN_VALUE_FRAGMENTS):
-            raise ValueError("style value contains a forbidden fragment")
-        if "<" in value or ">" in value:
-            raise ValueError("markup is not allowed in style values")
-        return value
+        return validate_safe_value(value, markup_message="markup is not allowed in style values")
 
 
 class SetTextAction(StrictModel):
@@ -171,16 +204,75 @@ class SetAttributeAction(StrictModel):
     @field_validator("value")
     @classmethod
     def validate_attribute_value(cls, value: str) -> str:
-        lowered = value.strip().casefold()
-        if lowered.startswith(("javascript:", "vbscript:", "data:text/html")):
-            raise ValueError("unsafe attribute value")
-        if "<script" in lowered or "</" in lowered:
-            raise ValueError("markup is not allowed in attribute values")
-        return value
+        return validate_safe_attribute_value(value)
+
+
+class InsertElementNode(StrictModel):
+    tag: str = Field(min_length=1, max_length=32)
+    text: str = Field(default="", max_length=5000)
+    attributes: dict[str, str] = Field(default_factory=dict, max_length=12)
+    styles: dict[str, str] = Field(default_factory=dict, max_length=30)
+    children: list[InsertElementNode] = Field(default_factory=list, max_length=12)
+
+    @field_validator("tag")
+    @classmethod
+    def validate_tag(cls, value: str) -> str:
+        lowered = value.casefold()
+        if lowered not in ALLOWED_INSERT_TAGS:
+            raise ValueError(f"insert tag is not allowed: {value}")
+        return lowered
+
+    @field_validator("attributes")
+    @classmethod
+    def validate_attributes(cls, value: dict[str, str]) -> dict[str, str]:
+        result: dict[str, str] = {}
+        for key, item in value.items():
+            name = str(key).casefold()
+            if name.startswith("on") or name not in ALLOWED_INSERT_ATTRIBUTES:
+                raise ValueError(f"insert attribute is not allowed: {key}")
+            result[name] = validate_safe_attribute_value(str(item)[:5000])
+        return result
+
+    @field_validator("styles")
+    @classmethod
+    def validate_styles(cls, value: dict[str, str]) -> dict[str, str]:
+        result: dict[str, str] = {}
+        for key, item in value.items():
+            property_name = str(key)
+            if property_name not in ALLOWED_STYLE_PROPERTIES:
+                raise ValueError(f"style property is not allowed: {property_name}")
+            result[property_name] = validate_safe_value(
+                str(item)[:500],
+                markup_message="markup is not allowed in style values",
+            )
+        return result
+
+    @model_validator(mode="after")
+    def validate_tree_limits(self) -> InsertElementNode:
+        count = 0
+
+        def visit(node: InsertElementNode, depth: int) -> None:
+            nonlocal count
+            if depth > 4:
+                raise ValueError("insert element tree exceeds maximum depth")
+            count += 1
+            if count > 40:
+                raise ValueError("insert element tree has too many nodes")
+            for child in node.children:
+                visit(child, depth + 1)
+
+        visit(self, 1)
+        return self
+
+
+class InsertElementAction(StrictModel):
+    type: Literal["insert_element"]
+    position: Literal["inside_start", "inside_end", "before", "after"] = "inside_end"
+    element: InsertElementNode
 
 
 EditorAction = Annotated[
-    SetStyleAction | SetTextAction | SetAttributeAction,
+    SetStyleAction | SetTextAction | SetAttributeAction | InsertElementAction,
     Field(discriminator="type"),
 ]
 
@@ -197,7 +289,7 @@ class AIEditRequest(StrictModel):
 
 
 PatchSource = Literal["manual", "ai", "undo", "redo", "system"]
-PatchAction = Literal["set_style", "set_text", "set_attribute"]
+PatchAction = Literal["set_style", "set_text", "set_attribute", "insert_element"]
 
 
 class PatchEvent(StrictModel):
@@ -216,8 +308,22 @@ class PatchEvent(StrictModel):
         elif self.action == "set_attribute":
             if self.property not in ALLOWED_ATTRIBUTES:
                 raise ValueError("set_attribute patch requires an allowed attribute")
-        elif self.property is not None:
-            raise ValueError("set_text patch cannot include property")
+        elif self.action == "set_text":
+            if self.property is not None:
+                raise ValueError("set_text patch cannot include property")
+        else:
+            if self.property not in INSERT_POSITIONS:
+                raise ValueError("insert_element patch requires an allowed position")
+            if self.before is None and self.after is None:
+                raise ValueError("insert_element patch requires serialized element state")
+            for payload in (self.before, self.after):
+                if payload is None:
+                    continue
+                try:
+                    parsed = json.loads(payload)
+                    InsertElementNode.model_validate(parsed)
+                except (json.JSONDecodeError, ValueError) as exc:
+                    raise ValueError("insert_element patch contains invalid element state") from exc
         return self
 
 
@@ -250,3 +356,21 @@ class PatchRecord(StrictModel):
             before=event.before,
             after=event.after,
         )
+
+
+def validate_safe_value(value: str, *, markup_message: str) -> str:
+    lowered = value.casefold()
+    if any(fragment in lowered for fragment in FORBIDDEN_VALUE_FRAGMENTS):
+        raise ValueError("style value contains a forbidden fragment")
+    if "<" in value or ">" in value:
+        raise ValueError(markup_message)
+    return value
+
+
+def validate_safe_attribute_value(value: str) -> str:
+    lowered = value.strip().casefold()
+    if lowered.startswith(("javascript:", "vbscript:", "data:text/html")):
+        raise ValueError("unsafe attribute value")
+    if "<script" in lowered or "</" in lowered:
+        raise ValueError("markup is not allowed in attribute values")
+    return value
