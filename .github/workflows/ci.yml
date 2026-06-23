@@ -9,7 +9,43 @@ permissions:
   contents: read
 
 jobs:
+  discover-python:
+    runs-on: ubuntu-latest
+    outputs:
+      files: ${{ steps.collect.outputs.files }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: collect
+        shell: bash
+        run: |
+          files=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          roots = [Path('src'), Path('tests')]
+          paths = [str(path) for root in roots for path in sorted(root.rglob('*.py'))]
+          print(json.dumps(paths))
+          PY
+          )
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+
+  lint-files:
+    needs: discover-python
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        file: ${{ fromJSON(needs.discover-python.outputs.files) }}
+    name: ruff (${{ matrix.file }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --extra dev
+      - run: uv run ruff check "${{ matrix.file }}"
+
   python:
+    needs: lint-files
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,27 +53,6 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --frozen --extra dev
-      - name: Probe export models
-        continue-on-error: true
-        run: uv run ruff check src/webdesign_ai_editor/domain/export_models.py
-      - name: Probe exporter service
-        continue-on-error: true
-        run: uv run ruff check src/webdesign_ai_editor/services/exporter.py
-      - name: Probe browser host
-        continue-on-error: true
-        run: uv run ruff check src/webdesign_ai_editor/adapters/browser_host.py
-      - name: Probe API app
-        continue-on-error: true
-        run: uv run ruff check src/webdesign_ai_editor/api/app.py
-      - name: Probe export CLI
-        continue-on-error: true
-        run: uv run ruff check src/webdesign_ai_editor/export_cli.py
-      - name: Probe exporter tests
-        continue-on-error: true
-        run: uv run ruff check tests/test_exporter.py
-      - name: Probe export API tests
-        continue-on-error: true
-        run: uv run ruff check tests/test_export_api.py
       - run: uv run ruff check .
       - run: uv run pytest
       - run: uv run mypy src
