@@ -4,12 +4,15 @@ from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, Response, status
 
+from webdesign_ai_editor.adapters.json_project_repository import JsonProjectRepository
 from webdesign_ai_editor.adapters.jsonl_patch_repository import JsonlPatchRepository
 from webdesign_ai_editor.adapters.ollama import OllamaClient, OllamaError
+from webdesign_ai_editor.api.projects import create_project_router
 from webdesign_ai_editor.config import Settings
 from webdesign_ai_editor.domain.models import AIEditRequest, EditPlan, PatchRecord
 from webdesign_ai_editor.domain.ports import AIProvider, PatchRepository
 from webdesign_ai_editor.services.edit_service import AIEditService
+from webdesign_ai_editor.services.projects import ProjectService
 
 
 def create_app(
@@ -24,12 +27,16 @@ def create_app(
         resolved_settings.sessions_dir
     )
     edit_service = AIEditService(resolved_provider)
+    project_service = ProjectService(
+        JsonProjectRepository(resolved_settings.data_dir / "projects")
+    )
 
     app = FastAPI(
         title="WebDesign AI Editor API",
         version="0.1.0",
         description="Local-first API. Remote deployment requires additional security controls.",
     )
+    app.include_router(create_project_router(project_service))
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -65,7 +72,7 @@ def create_app(
     ) -> list[PatchRecord]:
         if any(record.session_id != session_id for record in records):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="every patch must belong to the path session",
             )
         resolved_repository.replace_session(session_id, records)
