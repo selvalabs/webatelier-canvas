@@ -6,6 +6,10 @@ from fastapi import FastAPI, HTTPException, Response, status
 
 from webdesign_ai_editor.adapters.jsonl_patch_repository import JsonlPatchRepository
 from webdesign_ai_editor.adapters.ollama import OllamaClient, OllamaError
+from webdesign_ai_editor.adapters.project_metadata_repository import (
+    ProjectMetadataRepository,
+)
+from webdesign_ai_editor.api.metadata import create_metadata_router
 from webdesign_ai_editor.config import Settings
 from webdesign_ai_editor.domain.export_models import ExportPayload, ExportResult
 from webdesign_ai_editor.domain.models import AIEditRequest, EditPlan, PatchRecord
@@ -19,11 +23,15 @@ def create_app(
     settings: Settings | None = None,
     ai_provider: AIProvider | None = None,
     patch_repository: PatchRepository | None = None,
+    metadata_repository: ProjectMetadataRepository | None = None,
 ) -> FastAPI:
     resolved_settings = settings or Settings()
     resolved_provider = ai_provider or OllamaClient(resolved_settings)
     resolved_repository = patch_repository or JsonlPatchRepository(
         resolved_settings.sessions_dir
+    )
+    resolved_metadata_repository = metadata_repository or ProjectMetadataRepository(
+        resolved_settings.metadata_dir
     )
     edit_service = AIEditService(resolved_provider)
     export_service = ExportService(resolved_settings.data_dir / "exports")
@@ -33,6 +41,7 @@ def create_app(
         version="0.1.0",
         description="Local-first API. Remote deployment requires additional security controls.",
     )
+    app.include_router(create_metadata_router(resolved_metadata_repository))
 
     @app.get("/health")
     async def health() -> dict[str, str]:
