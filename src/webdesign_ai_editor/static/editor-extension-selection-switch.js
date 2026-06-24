@@ -26,6 +26,7 @@
     state.selected = api.getSelectedElement();
     state.selector = api.getSelector();
     installControls(shadow);
+    observeMode(shadow);
     window.addEventListener("wda:selection-changed", onSelectionChanged);
     window.addEventListener("pointerdown", onPointerDown, true);
     refreshControls();
@@ -52,6 +53,13 @@
     controls.querySelector('[data-selection-command="next"]')?.addEventListener("click", selectNextSibling);
   }
 
+  function observeMode(shadow) {
+    const mode = shadow.querySelector("#wda-mode");
+    if (!mode) return;
+    const observer = new MutationObserver(refreshControls);
+    observer.observe(mode, { attributes: true, attributeFilter: ["data-mode"] });
+  }
+
   function onSelectionChanged(event) {
     state.selected = event.detail?.element || null;
     state.selector = event.detail?.selector || "";
@@ -59,7 +67,7 @@
   }
 
   function onPointerDown(event) {
-    if (state.synthetic || event.button !== 0 || isEditorUiEvent(event)) return;
+    if (!isEditMode() || state.synthetic || event.button !== 0 || isEditorUiEvent(event)) return;
     if (window.__WDA_GLOBAL_DRAG_PENDING__) return;
 
     const candidate = firstSelectable(event.composedPath());
@@ -81,7 +89,7 @@
   }
 
   function forceSelect(element, clientX, clientY) {
-    if (!isSelectable(element)) return;
+    if (!isEditMode() || !isSelectable(element)) return;
     dispatchEscape();
     state.synthetic = true;
     window.setTimeout(() => {
@@ -148,20 +156,30 @@
     const controls = shadow?.querySelector("[data-selection-switch-controls]");
     if (!controls) return;
 
+    const editable = isEditMode();
     const commands = controls.querySelectorAll("button");
-    for (const button of commands) button.disabled = !state.selected;
+    for (const button of commands) button.disabled = !editable || !state.selected;
 
     const parent = controls.querySelector('[data-selection-command="parent"]');
     const child = controls.querySelector('[data-selection-command="child"]');
     const next = controls.querySelector('[data-selection-command="next"]');
-    if (parent instanceof HTMLButtonElement) parent.disabled = !isSelectable(state.selected?.parentElement || null);
-    if (child instanceof HTMLButtonElement) child.disabled = !state.selected || !Array.from(state.selected.children).some(isSelectable);
+    if (parent instanceof HTMLButtonElement) {
+      parent.disabled = !editable || !isSelectable(state.selected?.parentElement || null);
+    }
+    if (child instanceof HTMLButtonElement) {
+      child.disabled = !editable || !state.selected || !Array.from(state.selected.children).some(isSelectable);
+    }
     if (next instanceof HTMLButtonElement) {
       const siblings = state.selected?.parentElement
         ? Array.from(state.selected.parentElement.children).filter(isSelectable)
         : [];
-      next.disabled = siblings.length < 2;
+      next.disabled = !editable || siblings.length < 2;
     }
+  }
+
+  function isEditMode() {
+    const mode = document.getElementById(HOST_ID)?.shadowRoot?.querySelector("#wda-mode");
+    return mode?.getAttribute("data-mode") !== "interact";
   }
 
   function firstSelectable(path) {
