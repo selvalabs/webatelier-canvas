@@ -133,7 +133,7 @@
       throw new Error("O modelo retornou um plano vazio ou fora dos limites.");
     }
     for (const action of plan.actions) {
-      if (!action || !["set_style", "set_text", "set_attribute"].includes(action.type)) {
+      if (!action || !["set_style", "set_text", "set_attribute", "insert_element"].includes(action.type)) {
         throw new Error("O modelo retornou um tipo de ação não permitido.");
       }
     }
@@ -142,10 +142,15 @@
   function actionLabel(action) {
     if (action.type === "set_style") return `Estilo · ${action.property}`;
     if (action.type === "set_attribute") return `Atributo · ${action.name}`;
+    if (action.type === "insert_element") return `Inserir · ${action.element?.tag || "elemento"}`;
     return "Texto";
   }
 
   function actionValue(action) {
+    if (action.type === "insert_element") {
+      const text = action.element?.text ? ` · ${action.element.text}` : "";
+      return `${action.position || "inside_end"}${text}`.slice(0, 500);
+    }
     return String(action.value ?? "").slice(0, 500);
   }
 

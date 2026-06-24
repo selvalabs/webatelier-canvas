@@ -4,7 +4,7 @@
   window.__WDA_TIMELINE_ACTIVE__ = true;
 
   const state = { api: null, sessionId: "", patches: [], attempts: 0 };
-  const allowedActions = new Set(["set_style", "set_text", "set_attribute"]);
+  const allowedActions = new Set(["set_style", "set_text", "set_attribute", "insert_element"]);
 
   function boot() {
     const api = window.__WDA_EXTENSION_API__;
@@ -91,8 +91,7 @@
   }
 
   function render() {
-    const shadow = document.getElementById("__wda_editor_host__")?.shadowRoot;
-    const panel = shadow?.getElementById("__wda_timeline_panel__");
+    const panel = document.getElementById("__wda_editor_host__")?.shadowRoot?.getElementById("__wda_timeline_panel__");
     if (!panel) return;
     const count = panel.querySelector(".wda-timeline__count");
     const list = panel.querySelector(".wda-timeline__list");
@@ -129,7 +128,7 @@
 
   function exportTimeline() {
     const name = sessionName() || `wda-session-${state.sessionId || "export"}`;
-    const payload = { version: 1, session_id: state.sessionId, name, exported_at: new Date().toISOString(), patches: state.patches };
+    const payload = { version: 2, session_id: state.sessionId, name, exported_at: new Date().toISOString(), patches: state.patches };
     const blob = new Blob([JSON.stringify(payload, null, 2) + "\n"], { type: "application/json" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -151,8 +150,10 @@
       for (const raw of patches.slice(0, 2000)) {
         const patch = normalizePatch(raw);
         if (!patch) continue;
-        applyPatchToDom(patch);
-        await window.__wda_emit({ type: "patch", patch: { ...patch, source: "system" } });
+        const persistedByHandler = await applyPatchToDom(patch);
+        if (!persistedByHandler) {
+          await window.__wda_emit({ type: "patch", patch: { ...patch, source: "system" } });
+        }
       }
       if (parsed.name) saveSessionName(String(parsed.name));
       await refreshFromDisk();
@@ -175,12 +176,20 @@
 
   function normalizePatch(raw) {
     if (!raw || !allowedActions.has(raw.action) || typeof raw.selector !== "string") return null;
+    if (raw.action === "insert_element" && (!raw.after || !["inside_start", "inside_end", "before", "after"].includes(raw.property))) return null;
     return { selector: raw.selector, source: "system", action: raw.action, property: raw.property ?? null, before: raw.before ?? null, after: raw.after ?? null };
   }
 
-  function applyPatchToDom(patch) {
+  async function applyPatchToDom(patch) {
+    if (patch.action === "insert_element") {
+      const elements = window.__WDA_ELEMENTS_API__;
+      if (!elements?.replay) throw new Error("O módulo de inserção é necessário para reaplicar este patch.");
+      await elements.replay(patch);
+      return true;
+    }
+
     const target = safeQuery(patch.selector);
-    if (!(target instanceof HTMLElement || target instanceof SVGElement)) return;
+    if (!(target instanceof HTMLElement || target instanceof SVGElement)) return false;
     if (patch.action === "set_style" && patch.property) {
       const name = patch.property.replace(/[A-Z]/g, (character) => `-${character.toLowerCase()}`);
       if (patch.after === null) target.style.removeProperty(name);
@@ -191,34 +200,15 @@
       if (patch.after === null) target.removeAttribute(patch.property);
       else target.setAttribute(patch.property, String(patch.after));
     }
+    return false;
   }
 
-  function safeQuery(selector) {
-    try { return document.querySelector(selector); } catch { return null; }
-  }
-
-  function sessionName() {
-    const input = document.getElementById("__wda_editor_host__")?.shadowRoot?.querySelector("[data-session-name]");
-    return input?.value?.trim() || "";
-  }
-
-  function saveSessionName(value) {
-    if (!state.sessionId) return;
-    localStorage.setItem(`wda-session-name:${state.sessionId}`, value.trim());
-  }
-
-  function loadSessionName() {
-    const input = document.getElementById("__wda_editor_host__")?.shadowRoot?.querySelector("[data-session-name]");
-    if (input && state.sessionId) input.value = localStorage.getItem(`wda-session-name:${state.sessionId}`) || "";
-  }
-
-  function slug(value) {
-    return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "wda-session";
-  }
-
-  function messageOf(error) {
-    return error instanceof Error ? error.message : String(error);
-  }
+  function safeQuery(selector) { try { return document.querySelector(selector); } catch { return null; } }
+  function sessionName() { return document.getElementById("__wda_editor_host__")?.shadowRoot?.querySelector("[data-session-name]")?.value?.trim() || ""; }
+  function saveSessionName(value) { if (state.sessionId) localStorage.setItem(`wda-session-name:${state.sessionId}`, value.trim()); }
+  function loadSessionName() { const input = document.getElementById("__wda_editor_host__")?.shadowRoot?.querySelector("[data-session-name]"); if (input && state.sessionId) input.value = localStorage.getItem(`wda-session-name:${state.sessionId}`) || ""; }
+  function slug(value) { return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "wda-session"; }
+  function messageOf(error) { return error instanceof Error ? error.message : String(error); }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();
