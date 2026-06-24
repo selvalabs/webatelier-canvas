@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
@@ -9,23 +8,23 @@ from pydantic import ValidationError
 from webdesign_ai_editor.domain.models import InsertElementNode
 
 
-STATIC_DIR = (
-    Path(__file__).resolve().parents[1]
-    / "src"
-    / "webdesign_ai_editor"
-    / "static"
-)
+STATIC_DIR = Path(__file__).resolve().parents[1] / "src" / "webdesign_ai_editor" / "static"
+
+
+def read_js_hub_source() -> str:
+    files = sorted(STATIC_DIR.glob("editor-extension-js-hub-*.js"))
+    assert len(files) >= 4
+    return "\n".join(path.read_text(encoding="utf-8") for path in files)
 
 
 def test_js_hub_ships_reviewed_tools_without_dynamic_code_execution() -> None:
-    files = sorted(STATIC_DIR.glob("editor-extension-js-hub-*.js"))
-    assert len(files) >= 4
+    source = read_js_hub_source()
+    lowered = source.casefold()
 
-    source = "\n".join(path.read_text(encoding="utf-8") for path in files)
-    assert not re.search(r"\beval\s*\(", source)
-    assert not re.search(r"new\s+Function\b", source)
-    assert "onclick=" not in source.casefold()
-    assert "<script" not in source.casefold()
+    assert "eval(" not in source
+    assert "new Function" not in source
+    assert "onclick=" not in lowered
+    assert "<script" not in lowered
 
 
 @pytest.mark.parametrize(
