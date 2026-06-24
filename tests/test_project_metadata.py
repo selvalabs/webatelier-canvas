@@ -64,7 +64,7 @@ def test_metadata_repository_round_trip_and_delete(tmp_path: Path) -> None:
     assert repository.get(session_id).project_name == "Untitled project"
 
 
-@pytest.mark.parametrize("value", ["../escape", "folder/name", "", " space"])
+@pytest.mark.parametrize("value", ["../escape", "folder/name", "", "bad name"])
 def test_metadata_rejects_unsafe_export_filename(value: str) -> None:
     with pytest.raises(ValidationError):
         ProjectMetadata(session_id=uuid4(), export_filename=value)
