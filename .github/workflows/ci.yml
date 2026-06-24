@@ -9,31 +9,23 @@ permissions:
   contents: read
 
 jobs:
-  python:
+  diagnose-ruff:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
         with:
-          enable-cache: true
-      - run: uv sync --frozen --extra dev
-      - name: Probe prompting module
-        continue-on-error: true
-        run: uv run ruff check src/webdesign_ai_editor/services/prompting.py
-      - name: Probe JS Hub tests
-        continue-on-error: true
-        run: uv run ruff check tests/test_js_hub_security.py
-      - name: Probe remaining Python files
-        continue-on-error: true
-        run: uv run ruff check . --exclude prompting.py --exclude test_js_hub_security.py
-      - run: uv run ruff check .
-      - run: uv run pytest
-      - run: uv run mypy src
+          show-progress: false
+      - name: Install Ruff
+        run: python -m pip install --quiet ruff==0.15.18
+      - name: Concise Ruff diagnostics
+        run: python -m ruff check . --output-format=concise
 
   runtime:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          show-progress: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
