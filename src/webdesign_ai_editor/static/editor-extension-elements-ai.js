@@ -23,11 +23,11 @@
       if (edits.length) return { ...plan, actions: edits };
 
       const selected = editor.getSelectedElement();
-      const opacity = selected ? getComputedStyle(selected).opacity || "1" : "1";
+      const value = selected?.style.opacity || "";
       return {
         ...plan,
         summary: `${plan.summary} Inserção aplicada.`,
-        actions: [{ type: "set_style", property: "opacity", value: opacity }]
+        actions: [{ type: "set_style", property: "opacity", value }]
       };
     };
     wrapped.__wda_elements_wrapped__ = true;
