@@ -17,6 +17,15 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --frozen --extra dev
+      - name: Probe prompting module
+        continue-on-error: true
+        run: uv run ruff check src/webdesign_ai_editor/services/prompting.py
+      - name: Probe JS Hub tests
+        continue-on-error: true
+        run: uv run ruff check tests/test_js_hub_security.py
+      - name: Probe remaining Python files
+        continue-on-error: true
+        run: uv run ruff check . --exclude prompting.py --exclude test_js_hub_security.py
       - run: uv run ruff check .
       - run: uv run pytest
       - run: uv run mypy src
