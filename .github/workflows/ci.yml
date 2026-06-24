@@ -18,10 +18,7 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen --extra dev
       - run: uv run ruff check .
-      - name: Test project metadata
-        run: uv run pytest tests/test_project_metadata.py -q
-      - name: Test existing suite
-        run: uv run pytest --ignore=tests/test_project_metadata.py -q
+      - run: uv run pytest
       - run: uv run mypy src
 
   runtime:
@@ -37,5 +34,5 @@ jobs:
       - run: npm run --prefix editor-runtime typecheck
       - run: node scripts/check-runtime-extensions.mjs
       - run: npm run --prefix editor-runtime build
-      - name: Verify committed runtime bundle
+      - name: Verify runtime bundle
         run: git diff --exit-code -- src/webdesign_ai_editor/static/editor-runtime.js src/webdesign_ai_editor/static/editor-runtime.js.map
