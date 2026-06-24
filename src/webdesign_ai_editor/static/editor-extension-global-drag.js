@@ -26,6 +26,7 @@
     state.api = api;
     state.selected = api.getSelectedElement();
     installToggle(shadow);
+    observeMode(shadow);
     window.addEventListener("wda:selection-changed", (event) => {
       state.selected = event.detail?.element || null;
       refreshToggle();
@@ -60,16 +61,30 @@
     inspector.appendChild(button);
   }
 
+  function observeMode(shadow) {
+    const mode = shadow.querySelector("#wda-mode");
+    if (!mode) return;
+    const observer = new MutationObserver(() => {
+      if (!isEditMode() && state.pending) finish(true);
+      refreshToggle();
+    });
+    observer.observe(mode, { attributes: true, attributeFilter: ["data-mode"] });
+  }
+
   function refreshToggle() {
     const button = document.getElementById(HOST_ID)?.shadowRoot?.querySelector("[data-global-drag-toggle]");
     if (!(button instanceof HTMLButtonElement)) return;
-    button.disabled = !state.selected;
-    button.dataset.active = String(state.enabled);
-    button.textContent = state.enabled ? "Arrasto global: ativo" : "Arrasto global: pausado";
+    button.disabled = !isEditMode() || !state.selected;
+    button.dataset.active = String(state.enabled && isEditMode());
+    button.textContent = !isEditMode()
+      ? "Arrasto global: interagir"
+      : state.enabled
+        ? "Arrasto global: ativo"
+        : "Arrasto global: pausado";
   }
 
   function onPointerDown(event) {
-    if (!state.enabled || !state.selected || event.button !== 0 || isEditorUiEvent(event)) return;
+    if (!isEditMode() || !state.enabled || !state.selected || event.button !== 0 || isEditorUiEvent(event)) return;
     if (!(event.target instanceof Node) || !state.selected.contains(event.target)) return;
 
     event.preventDefault();
@@ -99,6 +114,10 @@
   function onPointerMove(event) {
     const pending = state.pending;
     if (!pending || event.pointerId !== pending.pointerId) return;
+    if (!isEditMode()) {
+      finish(true);
+      return;
+    }
 
     const deltaX = event.clientX - pending.startX;
     const deltaY = event.clientY - pending.startY;
@@ -181,6 +200,11 @@
       if (node === state.selected || state.selected?.contains(node)) return node;
     }
     return null;
+  }
+
+  function isEditMode() {
+    const mode = document.getElementById(HOST_ID)?.shadowRoot?.querySelector("#wda-mode");
+    return mode?.getAttribute("data-mode") !== "interact";
   }
 
   function isEditorUiEvent(event) {
