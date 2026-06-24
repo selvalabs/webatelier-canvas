@@ -36,3 +36,9 @@ class Settings(BaseSettings):
         path = self.data_dir / "sessions"
         path.mkdir(parents=True, exist_ok=True)
         return path
+
+    @property
+    def metadata_dir(self) -> Path:
+        path = self.data_dir / "metadata"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
