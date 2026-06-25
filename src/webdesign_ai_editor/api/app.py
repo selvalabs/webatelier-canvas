@@ -1,21 +1,24 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, Response, status
 
+from webdesign_ai_editor.adapters.json_project_repository import JsonProjectRepository
 from webdesign_ai_editor.adapters.jsonl_patch_repository import JsonlPatchRepository
 from webdesign_ai_editor.adapters.ollama import OllamaClient, OllamaError
 from webdesign_ai_editor.adapters.project_metadata_repository import (
     ProjectMetadataRepository,
 )
 from webdesign_ai_editor.api.metadata import create_metadata_router
+from webdesign_ai_editor.api.projects import create_project_router
 from webdesign_ai_editor.config import Settings
 from webdesign_ai_editor.domain.export_models import ExportPayload, ExportResult
 from webdesign_ai_editor.domain.models import AIEditRequest, EditPlan, PatchRecord
 from webdesign_ai_editor.domain.ports import AIProvider, PatchRepository
 from webdesign_ai_editor.services.edit_service import AIEditService
 from webdesign_ai_editor.services.exporter import ExportService
+from webdesign_ai_editor.services.projects import ProjectService
 
 
 def create_app(
@@ -35,6 +38,9 @@ def create_app(
     )
     edit_service = AIEditService(resolved_provider)
     export_service = ExportService(resolved_settings.data_dir / "exports")
+    project_service = ProjectService(
+        JsonProjectRepository(resolved_settings.data_dir / "projects")
+    )
 
     app = FastAPI(
         title="WebDesign AI Editor API",
@@ -42,6 +48,7 @@ def create_app(
         description="Local-first API. Remote deployment requires additional security controls.",
     )
     app.include_router(create_metadata_router(resolved_metadata_repository))
+    app.include_router(create_project_router(project_service))
 
     @app.get("/health")
     async def health() -> dict[str, str]:
