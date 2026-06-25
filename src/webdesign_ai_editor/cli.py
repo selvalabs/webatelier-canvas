@@ -35,10 +35,17 @@ def configure_logging(level: str) -> None:
     )
 
 
-def validate_http_url(url: str) -> str:
+def validate_http_url(url: str, *, allow_remote_target: bool = False) -> str:
     parsed = urlparse(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc or not parsed.hostname:
         raise typer.BadParameter("Use uma URL http(s) completa, por exemplo http://127.0.0.1:3000")
+    if parsed.username or parsed.password:
+        raise typer.BadParameter("A URL nÃ£o pode conter credenciais.")
+    if not allow_remote_target and not is_loopback_host(parsed.hostname):
+        raise typer.BadParameter(
+            "O launcher local-first aceita apenas URLs loopback por padrÃ£o. "
+            "Use --allow-remote-target somente para depuraÃ§Ã£o em alvo remoto confiÃ¡vel."
+        )
     return url
 
 
@@ -120,6 +127,14 @@ def launch(
     url: str = typer.Option(..., "--url", "-u", help="URL do projeto web."),
     model: str | None = typer.Option(None, help="Sobrescreve WDA_OLLAMA_MODEL."),
     channel: str | None = typer.Option(None, help="Canal Playwright opcional, como chrome."),
+    allow_remote_target: bool = typer.Option(
+        False,
+        "--allow-remote-target",
+        help=(
+            "Permite abrir uma URL nÃ£o-loopback confiÃ¡vel. "
+            "NÃ£o torna a ediÃ§Ã£o de sites remotos segura como serviÃ§o."
+        ),
+    ),
     session_id: UUID | None = typer.Option(
         None,
         "--session-id",
@@ -129,7 +144,7 @@ def launch(
     """Open a headed Chromium and inject the visual editor."""
 
     run_editor(
-        validate_http_url(url),
+        validate_http_url(url, allow_remote_target=allow_remote_target),
         model=model,
         channel=channel,
         session_id=session_id,

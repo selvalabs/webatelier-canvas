@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import ipaddress
 import json
 from datetime import UTC, datetime
 from typing import Annotated, Literal
+from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 ALLOWED_STYLE_PROPERTIES = frozenset(
     {
@@ -203,8 +205,12 @@ class SetAttributeAction(StrictModel):
 
     @field_validator("value")
     @classmethod
-    def validate_attribute_value(cls, value: str) -> str:
-        return validate_safe_attribute_value(value)
+    def validate_attribute_value(cls, value: str, info: ValidationInfo) -> str:
+        name = info.data.get("name")
+        return validate_safe_attribute_value(
+            value,
+            attribute_name=name if isinstance(name, str) else None,
+        )
 
 
 class InsertElementNode(StrictModel):
@@ -230,7 +236,10 @@ class InsertElementNode(StrictModel):
             name = str(key).casefold()
             if name.startswith("on") or name not in ALLOWED_INSERT_ATTRIBUTES:
                 raise ValueError(f"insert attribute is not allowed: {key}")
-            result[name] = validate_safe_attribute_value(str(item)[:5000])
+            result[name] = validate_safe_attribute_value(
+                str(item)[:5000],
+                attribute_name=name,
+            )
         return result
 
     @field_validator("styles")
@@ -367,10 +376,30 @@ def validate_safe_value(value: str, *, markup_message: str) -> str:
     return value
 
 
-def validate_safe_attribute_value(value: str) -> str:
+def validate_safe_attribute_value(value: str, *, attribute_name: str | None = None) -> str:
     lowered = value.strip().casefold()
     if lowered.startswith(("javascript:", "vbscript:", "data:text/html")):
         raise ValueError("unsafe attribute value")
     if "<script" in lowered or "</" in lowered:
         raise ValueError("markup is not allowed in attribute values")
+    if attribute_name in {"href", "src"}:
+        validate_local_first_attribute_url(value)
     return value
+
+
+def validate_local_first_attribute_url(value: str) -> None:
+    stripped = value.strip()
+    parsed = urlparse(stripped)
+    if parsed.netloc:
+        host = parsed.hostname
+        if host is None or not is_loopback_host(host):
+            raise ValueError("remote attribute URL is not allowed")
+    if parsed.scheme and parsed.scheme not in {"http", "https"}:
+        raise ValueError("unsafe attribute value")
+
+
+def is_loopback_host(host: str) -> bool:
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return host.casefold() == "localhost"

@@ -48,6 +48,14 @@ def test_valid_edit_plan_accepts_allowlisted_actions() -> None:
             {"type": "set_attribute", "name": "href", "value": "javascript:alert(1)"},
             "unsafe attribute value",
         ),
+        (
+            {"type": "set_attribute", "name": "href", "value": "https://example.test"},
+            "remote attribute URL",
+        ),
+        (
+            {"type": "set_attribute", "name": "src", "value": "//example.test/image.png"},
+            "remote attribute URL",
+        ),
     ],
 )
 def test_edit_plan_rejects_unsafe_actions(action: dict[str, str], message: str) -> None:
@@ -55,6 +63,21 @@ def test_edit_plan_rejects_unsafe_actions(action: dict[str, str], message: str) 
         EditPlan.model_validate(
             {"summary": "Inválido", "actions": [action], "warnings": []}
         )
+
+
+def test_edit_plan_accepts_relative_attribute_urls() -> None:
+    plan = EditPlan.model_validate(
+        {
+            "summary": "Atualiza link local",
+            "actions": [
+                {"type": "set_attribute", "name": "href", "value": "/contato"},
+                {"type": "set_attribute", "name": "src", "value": "./assets/hero.png"},
+            ],
+            "warnings": [],
+        }
+    )
+
+    assert len(plan.actions) == 2
 
 
 def test_patch_event_requires_property_shape() -> None:
