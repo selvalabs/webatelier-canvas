@@ -8,7 +8,12 @@ from pydantic import ValidationError
 from webdesign_ai_editor.domain.models import InsertElementNode
 
 
-STATIC_DIR = Path(__file__).resolve().parents[1] / "src" / "webdesign_ai_editor" / "static"
+STATIC_DIR = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "webdesign_ai_editor"
+    / "static"
+)
 
 
 def read_js_hub_source() -> str:
