@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from webdesign_ai_editor.domain.models import InsertElementNode
 
