@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from uuid import UUID, uuid4
 
 from webdesign_ai_editor.adapters.browser_host import BrowserEditorHost
@@ -27,11 +28,12 @@ class NullService:
         raise AssertionError("not called")
 
 
-def build_host() -> BrowserEditorHost:
+def build_host(*, exports_dir: Path | None = None) -> BrowserEditorHost:
     return BrowserEditorHost(
         session_id=uuid4(),
         patch_repository=NullRepository(),
         edit_service=NullService(),  # type: ignore[arg-type]
+        exports_dir=exports_dir,
     )
 
 
@@ -53,3 +55,9 @@ def test_host_exposes_session_identifier() -> None:
     host = build_host()
 
     assert isinstance(host.session_id, UUID)
+
+
+def test_host_accepts_custom_export_directory(tmp_path: Path) -> None:
+    host = build_host(exports_dir=tmp_path / "project-exports")
+
+    assert host.exports_dir == tmp_path / "project-exports"

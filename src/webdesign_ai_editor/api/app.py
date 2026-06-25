@@ -11,9 +11,11 @@ from webdesign_ai_editor.adapters.project_metadata_repository import (
 )
 from webdesign_ai_editor.api.metadata import create_metadata_router
 from webdesign_ai_editor.config import Settings
+from webdesign_ai_editor.domain.export_models import ExportPayload, ExportResult
 from webdesign_ai_editor.domain.models import AIEditRequest, EditPlan, PatchRecord
 from webdesign_ai_editor.domain.ports import AIProvider, PatchRepository
 from webdesign_ai_editor.services.edit_service import AIEditService
+from webdesign_ai_editor.services.exporter import ExportService
 
 
 def create_app(
@@ -32,6 +34,7 @@ def create_app(
         resolved_settings.metadata_dir
     )
     edit_service = AIEditService(resolved_provider)
+    export_service = ExportService(resolved_settings.data_dir / "exports")
 
     app = FastAPI(
         title="WebDesign AI Editor API",
@@ -88,6 +91,16 @@ def create_app(
     async def clear_patches(session_id: UUID) -> Response:
         resolved_repository.clear_session(session_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @app.post("/api/v1/exports", response_model=ExportResult)
+    async def create_export(request: ExportPayload) -> ExportResult:
+        try:
+            return export_service.export(request)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=str(exc),
+            ) from exc
 
     return app
 
