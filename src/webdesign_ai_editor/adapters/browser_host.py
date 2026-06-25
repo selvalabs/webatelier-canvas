@@ -10,13 +10,12 @@ from playwright.async_api import Browser, Page, async_playwright
 from pydantic import ValidationError
 
 from webdesign_ai_editor.adapters.enhancement_loader import install_editor_enhancements
-from webdesign_ai_editor.domain.models import (
-    AIEditRequest,
-    BridgePatchMessage,
-    PatchRecord,
-)
+from webdesign_ai_editor.config import Settings
+from webdesign_ai_editor.domain.export_models import ExportPayload
+from webdesign_ai_editor.domain.models import AIEditRequest, BridgePatchMessage, PatchRecord
 from webdesign_ai_editor.domain.ports import PatchRepository
 from webdesign_ai_editor.services.edit_service import AIEditService
+from webdesign_ai_editor.services.exporter import ExportService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,11 +28,13 @@ class BrowserEditorHost:
         patch_repository: PatchRepository,
         edit_service: AIEditService,
         browser_channel: str | None = None,
+        exports_dir: Path | None = None,
     ) -> None:
         self._session_id = session_id
         self._patch_repository = patch_repository
         self._edit_service = edit_service
         self._browser_channel = browser_channel
+        self._exports_dir = exports_dir or (Settings().data_dir / "exports")
 
     @property
     def session_id(self) -> UUID:
@@ -46,6 +47,10 @@ class BrowserEditorHost:
     @property
     def enhancement_runtime_path(self) -> Path:
         return Path(__file__).resolve().parents[1] / "static" / "editor-enhancements.js"
+
+    @property
+    def exports_dir(self) -> Path:
+        return self._exports_dir
 
     async def run(self, url: str) -> None:
         runtime_path = self.runtime_path
@@ -115,10 +120,24 @@ class BrowserEditorHost:
             self._patch_repository.clear_session(self._session_id)
             return {"ok": True}
 
+        async def export_binding(source: dict[str, Any], payload: Any) -> dict[str, Any]:
+            del source
+            try:
+                request = ExportPayload.model_validate(payload)
+                result = ExportService(self._exports_dir).export(request)
+                return {"ok": True, **result.model_dump(mode="json")}
+            except (ValidationError, ValueError) as exc:
+                LOGGER.warning("Rejected export payload: %s", exc)
+                return {"ok": False, "error": str(exc)}
+            except Exception:
+                LOGGER.exception("Failed to export package")
+                return {"ok": False, "error": "export failed"}
+
         await page.expose_binding("__wda_emit", emit_binding)
         await page.expose_binding("__wda_ai_edit", ai_binding)
         await page.expose_binding("__wda_session_state", session_binding)
         await page.expose_binding("__wda_clear_session", clear_session_binding)
+        await page.expose_binding("__wda_export_package", export_binding)
 
         page.on(
             "console",
