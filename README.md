@@ -201,7 +201,8 @@ Manual editing works without Ollama.
 From the repository root:
 
 ```powershell
-cd "C:\Users\carlo\projects\webdesign-ai-editor"
+git clone https://github.com/mtv-astro/webdesign-ai-editor.git
+cd webdesign-ai-editor
 
 .\scripts\bootstrap.ps1
 .\scripts\validate.ps1
@@ -228,14 +229,14 @@ uv run python -m webdesign_ai_editor demo --port 0
 First serve the target page. For a plain HTML/CSS landing page:
 
 ```powershell
-cd "C:\Users\carlo\Downloads\pe_no_chao_landingpage_v31_remodelada_skill"
+cd path\to\your-local-site
 python -m http.server 5173
 ```
 
 Then open the editor in another terminal:
 
 ```powershell
-cd "C:\Users\carlo\projects\webdesign-ai-editor"
+cd path\to\webdesign-ai-editor
 
 uv run python -m webdesign_ai_editor doctor
 uv run python -m webdesign_ai_editor launch --url http://127.0.0.1:5173
@@ -256,11 +257,11 @@ A saved project profile connects a trusted local directory, a loopback URL and p
 Create a profile:
 
 ```powershell
-cd "C:\Users\carlo\projects\webdesign-ai-editor"
+cd path\to\webdesign-ai-editor
 
 uv run python -m webdesign_ai_editor.project_cli create `
-  --name "Pe no Chao Landing v31" `
-  --root "C:\Users\carlo\Downloads\pe_no_chao_landingpage_v31_remodelada_skill" `
+  --name "Demo Landing Page" `
+  --root "path\to\your-local-site" `
   --url "http://127.0.0.1:5173"
 ```
 
@@ -355,7 +356,7 @@ Use the export panel inside the editor or the export CLI/API. The goal is to let
 Full local validation:
 
 ```powershell
-cd "C:\Users\carlo\projects\webdesign-ai-editor"
+cd path\to\webdesign-ai-editor
 
 uv run ruff check .
 uv run pytest

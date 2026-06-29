@@ -5,11 +5,11 @@ A project profile connects a trusted local directory, a loopback development URL
 ## Create and inspect a profile
 
 ```powershell
-cd "C:\Users\carlo\projects\webdesign-ai-editor"
+cd path\to\webdesign-ai-editor
 
 uv run python -m webdesign_ai_editor.project_cli create `
-  --name "My landing page" `
-  --root "C:\Users\carlo\projects\my-site" `
+  --name "Demo Landing Page" `
+  --root "path\to\your-local-site" `
   --url "http://127.0.0.1:5173"
 
 uv run python -m webdesign_ai_editor.project_cli list
@@ -23,7 +23,7 @@ Detection reads only bounded configuration files and filenames. It never execute
 Start the project development server yourself, then run:
 
 ```powershell
-cd "C:\Users\carlo\projects\webdesign-ai-editor"
+cd path\to\webdesign-ai-editor
 
 uv run python -m webdesign_ai_editor.project_cli open <project-uuid>
 ```
