@@ -13,8 +13,17 @@ The project is currently focused on **static sites, landing pages and local deve
 
 ---
 
+## Development status
+
+WebAtelier Canvas is under active development. Several core workflows are already functional, including launching a local page in Chromium, injecting the visual editor, selecting and adjusting elements, managing project metadata, exporting reviewable packages and running local validation. At the same time, some features are still experimental, incomplete or intentionally conservative while the local-first editing model, export flow and AI-assisted approval workflow continue to mature.
+
+Treat the project as a working product foundation rather than a finished production editor. The current version is best suited for local demos, controlled landing-page experiments, technical evaluation and continued development.
+
+---
+
 ## Table of contents
 
+- [Development status](#development-status)
 - [What it does](#what-it-does)
 - [Current feature set](#current-feature-set)
 - [Architecture](#architecture)
