@@ -5,15 +5,15 @@
   const HOST_ID = "__wda_editor_host__";
   const STYLE_ID = "__wda_panel_window_styles__";
   const RESET_ID = "__wda_panel_window_reset__";
-  const HANDLE_CLASS = "wda-panel-window-handle";
-  const STORAGE_KEY = "wda-panel-window:v3";
+  const STORAGE_KEY = "wda-panel-window:v4";
   const MAX_BOOT_ATTEMPTS = 280;
   const MIN_WIDTH = 320;
   const MIN_HEIGHT = 260;
   const EDGE_PADDING = 8;
-  const KEEP_VISIBLE = 84;
-  const DEFAULT_WIDTH = 380;
-  const HANDLE_DIRECTIONS = ["w", "e", "s", "sw", "se"];
+  const KEEP_VISIBLE = 96;
+  const DEFAULT_WIDTH = 390;
+  const EDGE_HIT_SIZE = 18;
+  const HEADER_HIT_HEIGHT = 68;
 
   if (window[ACTIVE_FLAG]) return;
   window[ACTIVE_FLAG] = true;
@@ -45,8 +45,7 @@
     installStyles(shadow);
     preparePanel(panel);
     installControls(panel, state.header);
-    bindDrag(panel, state.header);
-    bindResize(panel);
+    bindPointerClassifier(shadow, panel);
     restoreWindow(panel);
 
     window.addEventListener("resize", () => {
@@ -125,13 +124,30 @@
 
       .wda-panel[data-wda-window-managed="true"] .wda-header,
       .wda-panel[data-wda-window-managed="true"] header {
-        cursor: grab;
+        cursor: grab !important;
         user-select: none;
       }
 
       .wda-panel[data-wda-window-managed="true"][data-wda-window-dragging="true"] .wda-header,
       .wda-panel[data-wda-window-managed="true"][data-wda-window-dragging="true"] header {
-        cursor: grabbing;
+        cursor: grabbing !important;
+      }
+
+      .wda-panel[data-wda-window-managed="true"][data-wda-edge-hover="e"],
+      .wda-panel[data-wda-window-managed="true"][data-wda-edge-hover="w"] {
+        cursor: ew-resize !important;
+      }
+
+      .wda-panel[data-wda-window-managed="true"][data-wda-edge-hover="s"] {
+        cursor: ns-resize !important;
+      }
+
+      .wda-panel[data-wda-window-managed="true"][data-wda-edge-hover="se"] {
+        cursor: nwse-resize !important;
+      }
+
+      .wda-panel[data-wda-window-managed="true"][data-wda-edge-hover="sw"] {
+        cursor: nesw-resize !important;
       }
 
       .wda-panel-window-reset {
@@ -150,104 +166,6 @@
         background: rgba(59, 130, 246, 0.16);
         border-color: rgba(59, 130, 246, 0.55);
       }
-
-      .${HANDLE_CLASS} {
-        position: absolute;
-        z-index: 2147483647;
-        display: block;
-        pointer-events: auto;
-        touch-action: none;
-      }
-
-      .${HANDLE_CLASS}[data-wda-window-resize="e"] {
-        top: 40px;
-        right: 0;
-        bottom: 22px;
-        width: 12px;
-        cursor: ew-resize;
-      }
-
-      .${HANDLE_CLASS}[data-wda-window-resize="w"] {
-        top: 40px;
-        left: 0;
-        bottom: 22px;
-        width: 12px;
-        cursor: ew-resize;
-      }
-
-      .${HANDLE_CLASS}[data-wda-window-resize="s"] {
-        left: 24px;
-        right: 24px;
-        bottom: 0;
-        height: 12px;
-        cursor: ns-resize;
-      }
-
-      .${HANDLE_CLASS}[data-wda-window-resize="se"],
-      .${HANDLE_CLASS}[data-wda-window-resize="sw"] {
-        bottom: 0;
-        width: 24px;
-        height: 24px;
-        cursor: nwse-resize;
-      }
-
-      .${HANDLE_CLASS}[data-wda-window-resize="se"] { right: 0; }
-      .${HANDLE_CLASS}[data-wda-window-resize="sw"] { left: 0; cursor: nesw-resize; }
-
-      .${HANDLE_CLASS}[data-wda-window-resize="e"]::before,
-      .${HANDLE_CLASS}[data-wda-window-resize="w"]::before {
-        content: "";
-        position: absolute;
-        top: 14px;
-        bottom: 14px;
-        width: 2px;
-        border-radius: 999px;
-        background: rgba(148, 163, 184, 0);
-        transition: background 120ms ease;
-      }
-
-      .${HANDLE_CLASS}[data-wda-window-resize="e"]::before { right: 4px; }
-      .${HANDLE_CLASS}[data-wda-window-resize="w"]::before { left: 4px; }
-
-      .${HANDLE_CLASS}[data-wda-window-resize="s"]::before {
-        content: "";
-        position: absolute;
-        right: 18px;
-        bottom: 4px;
-        left: 18px;
-        height: 2px;
-        border-radius: 999px;
-        background: rgba(148, 163, 184, 0);
-        transition: background 120ms ease;
-      }
-
-      .${HANDLE_CLASS}[data-wda-window-resize="se"]::before,
-      .${HANDLE_CLASS}[data-wda-window-resize="sw"]::before {
-        content: "";
-        position: absolute;
-        bottom: 6px;
-        width: 10px;
-        height: 10px;
-        opacity: 0.76;
-      }
-
-      .${HANDLE_CLASS}[data-wda-window-resize="se"]::before {
-        right: 6px;
-        border-right: 2px solid rgba(148, 163, 184, 0.76);
-        border-bottom: 2px solid rgba(148, 163, 184, 0.76);
-      }
-
-      .${HANDLE_CLASS}[data-wda-window-resize="sw"]::before {
-        left: 6px;
-        border-left: 2px solid rgba(148, 163, 184, 0.76);
-        border-bottom: 2px solid rgba(148, 163, 184, 0.76);
-      }
-
-      .${HANDLE_CLASS}:hover::before,
-      .${HANDLE_CLASS}[data-active="true"]::before {
-        background: rgba(96, 165, 250, 0.72) !important;
-        border-color: rgba(96, 165, 250, 0.92) !important;
-      }
     `;
     shadow.appendChild(style);
   }
@@ -259,66 +177,80 @@
     panel.style.pointerEvents = "auto";
     panel.style.maxWidth = `calc(100vw - ${EDGE_PADDING * 2}px)`;
     panel.style.maxHeight = `calc(100vh - ${EDGE_PADDING * 2}px)`;
+    panel.style.transform = "none";
   }
 
   function installControls(panel, header) {
-    if (header && !header.querySelector(`#${RESET_ID}`)) {
-      const reset = document.createElement("button");
-      reset.id = RESET_ID;
-      reset.type = "button";
-      reset.className = "wda-panel-window-reset";
-      reset.title = "Resetar posição e tamanho do painel";
-      reset.textContent = "↺";
-      reset.addEventListener("pointerdown", stopPointer, true);
-      reset.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        resetWindow(panel);
-      });
-      header.appendChild(reset);
-    }
-
-    for (const direction of HANDLE_DIRECTIONS) {
-      if (panel.querySelector(`.${HANDLE_CLASS}[data-wda-window-resize="${direction}"]`)) continue;
-      const handle = document.createElement("div");
-      handle.className = HANDLE_CLASS;
-      handle.dataset.wdaWindowResize = direction;
-      handle.setAttribute("role", "separator");
-      handle.setAttribute("aria-label", labelForDirection(direction));
-      panel.appendChild(handle);
-    }
+    if (!header || header.querySelector(`#${RESET_ID}`)) return;
+    const reset = document.createElement("button");
+    reset.id = RESET_ID;
+    reset.type = "button";
+    reset.className = "wda-panel-window-reset";
+    reset.title = "Resetar posição e tamanho do painel";
+    reset.textContent = "↺";
+    reset.addEventListener("pointerdown", stopPointer, true);
+    reset.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      resetWindow(panel);
+    });
+    header.appendChild(reset);
   }
 
-  function bindDrag(panel, header) {
-    if (!header || header.dataset.wdaWindowDragBound === "true") return;
-    header.dataset.wdaWindowDragBound = "true";
+  function bindPointerClassifier(shadow, panel) {
+    if (shadow.__wdaPanelWindowClassifierBound) return;
+    shadow.__wdaPanelWindowClassifierBound = true;
 
-    header.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0 || isInteractive(event.target)) return;
-      startInteraction("drag", panel, event, null);
+    shadow.addEventListener("pointermove", (event) => {
+      if (state.interaction) return;
+      const kind = classifyPointer(panel, event);
+      if (kind?.type === "resize") panel.dataset.wdaEdgeHover = kind.direction;
+      else delete panel.dataset.wdaEdgeHover;
+    }, true);
+
+    shadow.addEventListener("pointerleave", () => {
+      if (!state.interaction) delete panel.dataset.wdaEdgeHover;
+    }, true);
+
+    shadow.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      const kind = classifyPointer(panel, event);
+      if (!kind) return;
+      if (kind.type === "drag" && isInteractive(event.target)) return;
+      startInteraction(kind, panel, event);
     }, true);
   }
 
-  function bindResize(panel) {
-    for (const handle of panel.querySelectorAll(`.${HANDLE_CLASS}`)) {
-      if (handle.dataset.wdaWindowResizeBound === "true") continue;
-      handle.dataset.wdaWindowResizeBound = "true";
+  function classifyPointer(panel, event) {
+    if (!(event.target instanceof Node) || !panel.contains(event.target)) return null;
+    const rect = panel.getBoundingClientRect();
+    const x = event.clientX;
+    const y = event.clientY;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return null;
 
-      handle.addEventListener("pointerdown", (event) => {
-        if (event.button !== 0) return;
-        startInteraction("resize", panel, event, handle.dataset.wdaWindowResize || "se", handle);
-      }, true);
-    }
+    const nearLeft = x - rect.left <= EDGE_HIT_SIZE;
+    const nearRight = rect.right - x <= EDGE_HIT_SIZE;
+    const nearBottom = rect.bottom - y <= EDGE_HIT_SIZE;
+
+    if (nearLeft && nearBottom) return { type: "resize", direction: "sw" };
+    if (nearRight && nearBottom) return { type: "resize", direction: "se" };
+    if (nearLeft) return { type: "resize", direction: "w" };
+    if (nearRight) return { type: "resize", direction: "e" };
+    if (nearBottom) return { type: "resize", direction: "s" };
+
+    const header = state.header;
+    const inHeader = header?.contains(event.target) || y - rect.top <= HEADER_HIT_HEIGHT;
+    if (inHeader) return { type: "drag", direction: null };
+    return null;
   }
 
-  function startInteraction(kind, panel, event, direction, handle = null) {
+  function startInteraction(kind, panel, event) {
     const rect = panel.getBoundingClientRect();
     pinToRect(panel, rect);
 
     state.interaction = {
-      kind,
-      direction,
-      handle,
+      kind: kind.type,
+      direction: kind.direction,
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
@@ -328,9 +260,10 @@
       height: rect.height
     };
 
-    if (kind === "drag") panel.dataset.wdaWindowDragging = "true";
-    if (handle) handle.dataset.active = "true";
-    beginDocumentCapture(cursorForInteraction(kind, direction));
+    panel.style.transform = "none";
+    if (kind.type === "drag") panel.dataset.wdaWindowDragging = "true";
+    if (kind.type === "resize") panel.dataset.wdaEdgeHover = kind.direction;
+    beginDocumentCapture(cursorForInteraction(kind.type, kind.direction));
 
     window.addEventListener("pointermove", onWindowPointerMove, true);
     window.addEventListener("pointerup", onWindowPointerEnd, true);
@@ -346,6 +279,7 @@
     const panel = state.panel;
     if (!current || !panel || event.pointerId !== current.pointerId) return;
 
+    panel.style.transform = "none";
     if (current.kind === "drag") {
       const next = clampMovementRect({
         left: current.left + event.clientX - current.startX,
@@ -375,7 +309,8 @@
 
     state.interaction = null;
     delete panel.dataset.wdaWindowDragging;
-    if (current.handle) delete current.handle.dataset.active;
+    delete panel.dataset.wdaEdgeHover;
+    panel.style.transform = "none";
     endDocumentCapture();
     window.removeEventListener("pointermove", onWindowPointerMove, true);
     window.removeEventListener("pointerup", onWindowPointerEnd, true);
@@ -402,19 +337,16 @@
     let height = resize.height;
 
     if (direction.includes("e")) {
-      const maxWidth = viewportWidth - resize.left - EDGE_PADDING;
-      width = clamp(resize.width + dx, MIN_WIDTH, maxWidth);
+      width = clamp(resize.width + dx, MIN_WIDTH, viewportWidth - resize.left - EDGE_PADDING);
     }
 
     if (direction.includes("w")) {
-      const maxWidth = Math.min(viewportWidth - EDGE_PADDING * 2, right - EDGE_PADDING);
-      width = clamp(resize.width - dx, MIN_WIDTH, maxWidth);
+      width = clamp(resize.width - dx, MIN_WIDTH, Math.min(viewportWidth - EDGE_PADDING * 2, right - EDGE_PADDING));
       left = right - width;
     }
 
     if (direction.includes("s")) {
-      const maxHeight = viewportHeight - resize.top - EDGE_PADDING;
-      height = clamp(resize.height + dy, MIN_HEIGHT, maxHeight);
+      height = clamp(resize.height + dy, MIN_HEIGHT, viewportHeight - resize.top - EDGE_PADDING);
     }
 
     return clampResizeRect({ left, top, width, height });
@@ -433,6 +365,7 @@
     panel.style.bottom = "auto";
     panel.style.width = `${next.width}px`;
     panel.style.height = `${next.height}px`;
+    panel.style.transform = "none";
   }
 
   function resetWindow(panel) {
@@ -443,6 +376,7 @@
     panel.style.bottom = "auto";
     panel.style.width = `${DEFAULT_WIDTH}px`;
     panel.style.height = "auto";
+    panel.style.transform = "none";
     clampPanel(panel);
   }
 
@@ -486,6 +420,7 @@
     panel.style.bottom = "auto";
     panel.style.width = `${next.width}px`;
     if (rect.height >= MIN_HEIGHT || panel.style.height) panel.style.height = `${next.height}px`;
+    panel.style.transform = "none";
   }
 
   function pinToRect(panel, rect) {
@@ -496,6 +431,7 @@
     panel.style.bottom = "auto";
     panel.style.width = `${next.width}px`;
     panel.style.height = `${next.height}px`;
+    panel.style.transform = "none";
   }
 
   function clampResizeRect(rect) {
@@ -538,17 +474,9 @@
     return "ew-resize";
   }
 
-  function labelForDirection(direction) {
-    if (direction === "e") return "Ajustar largura pela direita";
-    if (direction === "w") return "Ajustar largura pela esquerda";
-    if (direction === "s") return "Ajustar altura";
-    if (direction === "sw") return "Ajustar largura e altura pelo canto inferior esquerdo";
-    return "Ajustar largura e altura pelo canto inferior direito";
-  }
-
   function isInteractive(target) {
     if (!(target instanceof Element)) return false;
-    return Boolean(target.closest("button, input, select, textarea, a, label, summary, [role='button'], [contenteditable='true'], ." + HANDLE_CLASS));
+    return Boolean(target.closest("button, input, select, textarea, a, label, summary, [role='button'], [contenteditable='true']"));
   }
 
   function stopPointer(event) {
