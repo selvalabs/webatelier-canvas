@@ -6,11 +6,13 @@
   const STYLE_ID = "__wda_panel_window_styles__";
   const RESET_ID = "__wda_panel_window_reset__";
   const HANDLE_CLASS = "wda-panel-window-handle";
-  const STORAGE_KEY = "wda-panel-window:v2";
+  const STORAGE_KEY = "wda-panel-window:v3";
   const MAX_BOOT_ATTEMPTS = 280;
   const MIN_WIDTH = 320;
   const MIN_HEIGHT = 260;
   const EDGE_PADDING = 8;
+  const KEEP_VISIBLE = 84;
+  const DEFAULT_WIDTH = 380;
   const HANDLE_DIRECTIONS = ["w", "e", "s", "sw", "se"];
 
   if (window[ACTIVE_FLAG]) return;
@@ -21,9 +23,10 @@
     shadow: null,
     panel: null,
     header: null,
-    drag: null,
-    resize: null,
-    saveTimer: 0
+    interaction: null,
+    saveTimer: 0,
+    previousCursor: "",
+    previousUserSelect: ""
   };
 
   function boot() {
@@ -157,66 +160,60 @@
       }
 
       .${HANDLE_CLASS}[data-wda-window-resize="e"] {
-        top: 42px;
+        top: 40px;
         right: 0;
         bottom: 22px;
-        width: 8px;
+        width: 12px;
         cursor: ew-resize;
       }
 
       .${HANDLE_CLASS}[data-wda-window-resize="w"] {
-        top: 42px;
+        top: 40px;
         left: 0;
         bottom: 22px;
-        width: 8px;
+        width: 12px;
         cursor: ew-resize;
       }
 
       .${HANDLE_CLASS}[data-wda-window-resize="s"] {
-        left: 22px;
-        right: 22px;
+        left: 24px;
+        right: 24px;
         bottom: 0;
-        height: 8px;
+        height: 12px;
         cursor: ns-resize;
       }
 
       .${HANDLE_CLASS}[data-wda-window-resize="se"],
       .${HANDLE_CLASS}[data-wda-window-resize="sw"] {
         bottom: 0;
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
         cursor: nwse-resize;
       }
 
-      .${HANDLE_CLASS}[data-wda-window-resize="se"] {
-        right: 0;
-      }
-
-      .${HANDLE_CLASS}[data-wda-window-resize="sw"] {
-        left: 0;
-        cursor: nesw-resize;
-      }
+      .${HANDLE_CLASS}[data-wda-window-resize="se"] { right: 0; }
+      .${HANDLE_CLASS}[data-wda-window-resize="sw"] { left: 0; cursor: nesw-resize; }
 
       .${HANDLE_CLASS}[data-wda-window-resize="e"]::before,
       .${HANDLE_CLASS}[data-wda-window-resize="w"]::before {
         content: "";
         position: absolute;
-        top: 12px;
-        bottom: 12px;
+        top: 14px;
+        bottom: 14px;
         width: 2px;
         border-radius: 999px;
         background: rgba(148, 163, 184, 0);
         transition: background 120ms ease;
       }
 
-      .${HANDLE_CLASS}[data-wda-window-resize="e"]::before { right: 2px; }
-      .${HANDLE_CLASS}[data-wda-window-resize="w"]::before { left: 2px; }
+      .${HANDLE_CLASS}[data-wda-window-resize="e"]::before { right: 4px; }
+      .${HANDLE_CLASS}[data-wda-window-resize="w"]::before { left: 4px; }
 
       .${HANDLE_CLASS}[data-wda-window-resize="s"]::before {
         content: "";
         position: absolute;
         right: 18px;
-        bottom: 3px;
+        bottom: 4px;
         left: 18px;
         height: 2px;
         border-radius: 999px;
@@ -228,20 +225,20 @@
       .${HANDLE_CLASS}[data-wda-window-resize="sw"]::before {
         content: "";
         position: absolute;
-        bottom: 5px;
-        width: 9px;
-        height: 9px;
+        bottom: 6px;
+        width: 10px;
+        height: 10px;
         opacity: 0.76;
       }
 
       .${HANDLE_CLASS}[data-wda-window-resize="se"]::before {
-        right: 5px;
+        right: 6px;
         border-right: 2px solid rgba(148, 163, 184, 0.76);
         border-bottom: 2px solid rgba(148, 163, 184, 0.76);
       }
 
       .${HANDLE_CLASS}[data-wda-window-resize="sw"]::before {
-        left: 5px;
+        left: 6px;
         border-left: 2px solid rgba(148, 163, 184, 0.76);
         border-bottom: 2px solid rgba(148, 163, 184, 0.76);
       }
@@ -272,6 +269,7 @@
       reset.className = "wda-panel-window-reset";
       reset.title = "Resetar posição e tamanho do painel";
       reset.textContent = "↺";
+      reset.addEventListener("pointerdown", stopPointer, true);
       reset.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -297,56 +295,8 @@
 
     header.addEventListener("pointerdown", (event) => {
       if (event.button !== 0 || isInteractive(event.target)) return;
-
-      const rect = panel.getBoundingClientRect();
-      pinToRect(panel, rect);
-      state.drag = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height
-      };
-
-      panel.dataset.wdaWindowDragging = "true";
-      header.setPointerCapture?.(event.pointerId);
-      event.preventDefault();
-      event.stopPropagation();
+      startInteraction("drag", panel, event, null);
     }, true);
-
-    header.addEventListener("pointermove", (event) => {
-      const drag = state.drag;
-      if (!drag || event.pointerId !== drag.pointerId) return;
-
-      const next = clampRect({
-        left: drag.left + event.clientX - drag.startX,
-        top: drag.top + event.clientY - drag.startY,
-        width: drag.width,
-        height: drag.height
-      });
-
-      panel.style.left = `${next.left}px`;
-      panel.style.top = `${next.top}px`;
-      event.preventDefault();
-      event.stopPropagation();
-    }, true);
-
-    const endDrag = (event) => {
-      const drag = state.drag;
-      if (!drag || event.pointerId !== drag.pointerId) return;
-      state.drag = null;
-      delete panel.dataset.wdaWindowDragging;
-      try { header.releasePointerCapture?.(event.pointerId); } catch {}
-      clampPanel(panel);
-      saveWindow(panel);
-      event.preventDefault();
-      event.stopPropagation();
-    };
-
-    header.addEventListener("pointerup", endDrag, true);
-    header.addEventListener("pointercancel", endDrag, true);
   }
 
   function bindResize(panel) {
@@ -356,52 +306,86 @@
 
       handle.addEventListener("pointerdown", (event) => {
         if (event.button !== 0) return;
-        const rect = panel.getBoundingClientRect();
-        pinToRect(panel, rect);
-        state.resize = {
-          pointerId: event.pointerId,
-          direction: handle.dataset.wdaWindowResize || "se",
-          handle,
-          startX: event.clientX,
-          startY: event.clientY,
-          left: rect.left,
-          top: rect.top,
-          width: rect.width,
-          height: rect.height
-        };
-        handle.dataset.active = "true";
-        handle.setPointerCapture?.(event.pointerId);
-        event.preventDefault();
-        event.stopPropagation();
+        startInteraction("resize", panel, event, handle.dataset.wdaWindowResize || "se", handle);
       }, true);
-
-      handle.addEventListener("pointermove", (event) => {
-        const resize = state.resize;
-        if (!resize || event.pointerId !== resize.pointerId) return;
-        const next = resizeRectFromPointer(resize, event);
-        panel.style.left = `${next.left}px`;
-        panel.style.top = `${next.top}px`;
-        panel.style.width = `${next.width}px`;
-        panel.style.height = `${next.height}px`;
-        event.preventDefault();
-        event.stopPropagation();
-      }, true);
-
-      const endResize = (event) => {
-        const resize = state.resize;
-        if (!resize || event.pointerId !== resize.pointerId) return;
-        state.resize = null;
-        delete resize.handle.dataset.active;
-        try { resize.handle.releasePointerCapture?.(event.pointerId); } catch {}
-        clampPanel(panel);
-        saveWindow(panel);
-        event.preventDefault();
-        event.stopPropagation();
-      };
-
-      handle.addEventListener("pointerup", endResize, true);
-      handle.addEventListener("pointercancel", endResize, true);
     }
+  }
+
+  function startInteraction(kind, panel, event, direction, handle = null) {
+    const rect = panel.getBoundingClientRect();
+    pinToRect(panel, rect);
+
+    state.interaction = {
+      kind,
+      direction,
+      handle,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height
+    };
+
+    if (kind === "drag") panel.dataset.wdaWindowDragging = "true";
+    if (handle) handle.dataset.active = "true";
+    beginDocumentCapture(cursorForInteraction(kind, direction));
+
+    window.addEventListener("pointermove", onWindowPointerMove, true);
+    window.addEventListener("pointerup", onWindowPointerEnd, true);
+    window.addEventListener("pointercancel", onWindowPointerEnd, true);
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  }
+
+  function onWindowPointerMove(event) {
+    const current = state.interaction;
+    const panel = state.panel;
+    if (!current || !panel || event.pointerId !== current.pointerId) return;
+
+    if (current.kind === "drag") {
+      const next = clampMovementRect({
+        left: current.left + event.clientX - current.startX,
+        top: current.top + event.clientY - current.startY,
+        width: current.width,
+        height: current.height
+      });
+      panel.style.left = `${next.left}px`;
+      panel.style.top = `${next.top}px`;
+    } else {
+      const next = resizeRectFromPointer(current, event);
+      panel.style.left = `${next.left}px`;
+      panel.style.top = `${next.top}px`;
+      panel.style.width = `${next.width}px`;
+      panel.style.height = `${next.height}px`;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  }
+
+  function onWindowPointerEnd(event) {
+    const current = state.interaction;
+    const panel = state.panel;
+    if (!current || !panel || event.pointerId !== current.pointerId) return;
+
+    state.interaction = null;
+    delete panel.dataset.wdaWindowDragging;
+    if (current.handle) delete current.handle.dataset.active;
+    endDocumentCapture();
+    window.removeEventListener("pointermove", onWindowPointerMove, true);
+    window.removeEventListener("pointerup", onWindowPointerEnd, true);
+    window.removeEventListener("pointercancel", onWindowPointerEnd, true);
+    clampPanel(panel);
+    saveWindow(panel);
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
   }
 
   function resizeRectFromPointer(resize, event) {
@@ -433,7 +417,7 @@
       height = clamp(resize.height + dy, MIN_HEIGHT, maxHeight);
     }
 
-    return clampRect({ left, top, width, height });
+    return clampResizeRect({ left, top, width, height });
   }
 
   function restoreWindow(panel) {
@@ -442,7 +426,7 @@
       clampPanel(panel);
       return;
     }
-    const next = clampRect(stored);
+    const next = clampMovementRect(stored);
     panel.style.left = `${next.left}px`;
     panel.style.top = `${next.top}px`;
     panel.style.right = "auto";
@@ -457,14 +441,14 @@
     panel.style.right = "12px";
     panel.style.left = "auto";
     panel.style.bottom = "auto";
-    panel.style.width = "326px";
+    panel.style.width = `${DEFAULT_WIDTH}px`;
     panel.style.height = "auto";
     clampPanel(panel);
   }
 
   function saveWindow(panel) {
     const rect = panel.getBoundingClientRect();
-    const next = clampRect(rect);
+    const next = clampMovementRect(rect);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       left: Math.round(next.left),
       top: Math.round(next.top),
@@ -495,7 +479,7 @@
 
   function clampPanel(panel) {
     const rect = panel.getBoundingClientRect();
-    const next = clampRect(rect);
+    const next = clampMovementRect(rect);
     panel.style.left = `${next.left}px`;
     panel.style.top = `${next.top}px`;
     panel.style.right = "auto";
@@ -505,7 +489,7 @@
   }
 
   function pinToRect(panel, rect) {
-    const next = clampRect(rect);
+    const next = clampMovementRect(rect);
     panel.style.left = `${next.left}px`;
     panel.style.top = `${next.top}px`;
     panel.style.right = "auto";
@@ -514,14 +498,44 @@
     panel.style.height = `${next.height}px`;
   }
 
-  function clampRect(rect) {
+  function clampResizeRect(rect) {
     const viewportWidth = Math.max(MIN_WIDTH + EDGE_PADDING * 2, window.innerWidth);
     const viewportHeight = Math.max(MIN_HEIGHT + EDGE_PADDING * 2, window.innerHeight);
     const width = clamp(Math.round(rect.width), MIN_WIDTH, viewportWidth - EDGE_PADDING * 2);
     const height = clamp(Math.round(rect.height || MIN_HEIGHT), MIN_HEIGHT, viewportHeight - EDGE_PADDING * 2);
     const left = clamp(Math.round(rect.left), EDGE_PADDING, viewportWidth - width - EDGE_PADDING);
-    const top = clamp(Math.round(rect.top), EDGE_PADDING, viewportHeight - height - EDGE_PADDING);
+    const top = clamp(Math.round(rect.top), EDGE_PADDING, viewportHeight - Math.min(height, KEEP_VISIBLE) - EDGE_PADDING);
     return { left, top, width, height };
+  }
+
+  function clampMovementRect(rect) {
+    const viewportWidth = Math.max(MIN_WIDTH + EDGE_PADDING * 2, window.innerWidth);
+    const viewportHeight = Math.max(MIN_HEIGHT + EDGE_PADDING * 2, window.innerHeight);
+    const width = clamp(Math.round(rect.width || DEFAULT_WIDTH), MIN_WIDTH, viewportWidth - EDGE_PADDING * 2);
+    const height = clamp(Math.round(rect.height || MIN_HEIGHT), MIN_HEIGHT, viewportHeight - EDGE_PADDING * 2);
+    const left = clamp(Math.round(rect.left), KEEP_VISIBLE - width, viewportWidth - KEEP_VISIBLE);
+    const top = clamp(Math.round(rect.top), KEEP_VISIBLE - height, viewportHeight - KEEP_VISIBLE);
+    return { left, top, width, height };
+  }
+
+  function beginDocumentCapture(cursor) {
+    state.previousCursor = document.documentElement.style.cursor;
+    state.previousUserSelect = document.documentElement.style.userSelect;
+    document.documentElement.style.cursor = cursor;
+    document.documentElement.style.userSelect = "none";
+  }
+
+  function endDocumentCapture() {
+    document.documentElement.style.cursor = state.previousCursor;
+    document.documentElement.style.userSelect = state.previousUserSelect;
+  }
+
+  function cursorForInteraction(kind, direction) {
+    if (kind === "drag") return "grabbing";
+    if (direction === "s") return "ns-resize";
+    if (direction === "sw") return "nesw-resize";
+    if (direction === "se") return "nwse-resize";
+    return "ew-resize";
   }
 
   function labelForDirection(direction) {
@@ -535,6 +549,11 @@
   function isInteractive(target) {
     if (!(target instanceof Element)) return false;
     return Boolean(target.closest("button, input, select, textarea, a, label, summary, [role='button'], [contenteditable='true'], ." + HANDLE_CLASS));
+  }
+
+  function stopPointer(event) {
+    event.stopPropagation();
+    event.stopImmediatePropagation();
   }
 
   function clamp(value, min, max) {
