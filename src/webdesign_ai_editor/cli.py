@@ -40,11 +40,11 @@ def validate_http_url(url: str, *, allow_remote_target: bool = False) -> str:
     if parsed.scheme not in {"http", "https"} or not parsed.netloc or not parsed.hostname:
         raise typer.BadParameter("Use uma URL http(s) completa, por exemplo http://127.0.0.1:3000")
     if parsed.username or parsed.password:
-        raise typer.BadParameter("A URL nÃ£o pode conter credenciais.")
+        raise typer.BadParameter("A URL não pode conter credenciais.")
     if not allow_remote_target and not is_loopback_host(parsed.hostname):
         raise typer.BadParameter(
-            "O launcher local-first aceita apenas URLs loopback por padrÃ£o. "
-            "Use --allow-remote-target somente para depuraÃ§Ã£o em alvo remoto confiÃ¡vel."
+            "O launcher local-first aceita apenas URLs loopback por padrão. "
+            "Use --allow-remote-target somente para depuração em alvo remoto confiável."
         )
     return url
 
@@ -131,8 +131,8 @@ def launch(
         False,
         "--allow-remote-target",
         help=(
-            "Permite abrir uma URL nÃ£o-loopback confiÃ¡vel. "
-            "NÃ£o torna a ediÃ§Ã£o de sites remotos segura como serviÃ§o."
+            "Permite abrir uma URL não-loopback confiável. "
+            "Não torna a edição de sites remotos segura como serviço."
         ),
     ),
     session_id: UUID | None = typer.Option(
