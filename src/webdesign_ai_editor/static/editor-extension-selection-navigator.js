@@ -40,8 +40,11 @@
     refreshFromApi();
 
     window.addEventListener("wda:selection-changed", (event) => {
-      state.lastSelection = state.selected;
-      state.selected = event.detail?.element || null;
+      const nextSelected = event.detail?.element || null;
+      if (state.selected && state.selected !== nextSelected) {
+        state.lastSelection = state.selected;
+      }
+      state.selected = nextSelected;
       state.selector = event.detail?.selector || api.getSelector?.() || "";
       render();
     });
