@@ -7,8 +7,7 @@
 The project is focused on **static sites, landing pages and local development URLs**. Manual editing works without an AI model. AI-assisted editing is designed around local Ollama/Gemma workflows and explicit approval before changes are applied.
 
 > Product name: `WebAtelier Canvas`  
-> Repository: `selvalabs/webdesign-ai-editor`  
-> Planned public repo name: `webatelier-canvas`  
+> Repository: `selvalabs/webatelier-canvas`  
 > Current mode: local-first / service-ready foundation  
 > Main platform tested during development: Windows + PowerShell
 
@@ -179,8 +178,8 @@ Manual editing works without Ollama.
 From the repository root:
 
 ```powershell
-git clone https://github.com/selvalabs/webdesign-ai-editor.git
-cd webdesign-ai-editor
+git clone https://github.com/selvalabs/webatelier-canvas.git
+cd webatelier-canvas
 
 .\scripts\bootstrap.ps1
 .\scripts\validate.ps1
@@ -214,7 +213,7 @@ python -m http.server 5173
 Then open the editor in another terminal:
 
 ```powershell
-cd path\to\webdesign-ai-editor
+cd path\to\webatelier-canvas
 
 uv run python -m webdesign_ai_editor doctor
 uv run python -m webdesign_ai_editor launch --url http://127.0.0.1:5173
@@ -235,7 +234,7 @@ A saved project profile connects a trusted local directory, a loopback URL and p
 Create a profile:
 
 ```powershell
-cd path\to\webdesign-ai-editor
+cd path\to\webatelier-canvas
 
 uv run python -m webdesign_ai_editor.project_cli create `
   --name "Demo Landing Page" `
@@ -334,7 +333,7 @@ Use the export panel inside the editor or the export CLI/API. The goal is to let
 Full local validation:
 
 ```powershell
-cd path\to\webdesign-ai-editor
+cd path\to\webatelier-canvas
 
 uv run ruff check .
 uv run pytest
