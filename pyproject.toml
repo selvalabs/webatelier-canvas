@@ -47,8 +47,8 @@ dev = [
 wda = "webdesign_ai_editor.cli:app"
 
 [project.urls]
-Repository = "https://github.com/selvalabs/webdesign-ai-editor"
-Issues = "https://github.com/selvalabs/webdesign-ai-editor/issues"
+Repository = "https://github.com/selvalabs/webatelier-canvas"
+Issues = "https://github.com/selvalabs/webatelier-canvas/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/webdesign_ai_editor"]
