@@ -143,7 +143,6 @@
   function organizePanel(shadow, selected) {
     const elementLabel = selected.querySelector("#wda-element-label");
     const selectorLabel = selected.querySelector("#wda-selector");
-    const empty = shadow.querySelector("#wda-empty");
 
     const summary = document.createElement("div");
     summary.className = "wda-manual-summary";
@@ -206,8 +205,7 @@
     if (actions) footer.appendChild(actions);
     if (status) footer.appendChild(status);
 
-    if (empty) empty.insertAdjacentElement("afterend", summary);
-    else selected.prepend(summary);
+    selected.prepend(summary);
     summary.insertAdjacentElement("afterend", tabs);
     tabs.insertAdjacentElement("afterend", panels);
     selected.appendChild(footer);
