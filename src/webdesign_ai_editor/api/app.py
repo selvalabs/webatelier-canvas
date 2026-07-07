@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from uuid import UUID
 
@@ -43,7 +43,7 @@ def create_app(
     )
 
     app = FastAPI(
-        title="WebDesign AI Editor API",
+        title="WebAtelier Canvas API",
         version="0.1.0",
         description="Local-first API. Remote deployment requires additional security controls.",
     )
