@@ -4,10 +4,11 @@
 
 **WebAtelier Canvas** is a local-first visual web design editor for real web pages. It opens a local URL in a headed Chromium browser through Playwright, injects an editable visual layer, and lets you inspect, move, adjust, annotate, save and export design changes without sending the source project to a remote browser service.
 
-The project is currently focused on **static sites, landing pages and local development URLs**. Manual editing works without an AI model. AI-assisted editing is designed around local Ollama/Gemma workflows and explicit approval before changes are applied.
+The project is focused on **static sites, landing pages and local development URLs**. Manual editing works without an AI model. AI-assisted editing is designed around local Ollama/Gemma workflows and explicit approval before changes are applied.
 
-> Repository: `mtv-astro/webdesign-ai-editor`  
-> Runtime name: `WebAtelier Canvas`  
+> Product name: `WebAtelier Canvas`  
+> Repository: `selvalabs/webdesign-ai-editor`  
+> Planned public repo name: `webatelier-canvas`  
 > Current mode: local-first / service-ready foundation  
 > Main platform tested during development: Windows + PowerShell
 
@@ -15,38 +16,15 @@ The project is currently focused on **static sites, landing pages and local deve
 
 ## Development status
 
-WebAtelier Canvas is under active development. Several core workflows are already functional, including launching a local page in Chromium, injecting the visual editor, selecting and adjusting elements, managing project metadata, exporting reviewable packages and running local validation. At the same time, some features are still experimental, incomplete or intentionally conservative while the local-first editing model, export flow and AI-assisted approval workflow continue to mature.
+WebAtelier Canvas is under active development. Several core workflows are already functional, including launching a local page in Chromium, injecting the visual editor, selecting and adjusting elements, managing project metadata, exporting reviewable packages and running local validation.
 
 Treat the project as a working product foundation rather than a finished production editor. The current version is best suited for local demos, controlled landing-page experiments, technical evaluation and continued development.
 
 ---
 
-## Table of contents
-
-- [Development status](#development-status)
-- [What it does](#what-it-does)
-- [Current feature set](#current-feature-set)
-- [Architecture](#architecture)
-- [Requirements](#requirements)
-- [Quick start](#quick-start)
-- [Open a real local page](#open-a-real-local-page)
-- [Save a local project profile](#save-a-local-project-profile)
-- [Use Ollama/Gemma](#use-ollamagemma)
-- [Run the local API](#run-the-local-api)
-- [Export packages](#export-packages)
-- [Validation](#validation)
-- [Manual QA checklist](#manual-qa-checklist)
-- [Security model](#security-model)
-- [Project structure](#project-structure)
-- [Current limitations](#current-limitations)
-- [Roadmap](#roadmap)
-- [Contributing workflow](#contributing-workflow)
-
----
-
 ## What it does
 
-WebAtelier Canvas sits on top of a web page that is already running locally. It does not need to own the original project framework to start editing. The usual flow is:
+WebAtelier Canvas sits on top of a web page that is already running locally. It does not need to own the original project framework to start editing.
 
 ```text
 local HTML/CSS/JS, Vite, React, static export, landing page, etc.
@@ -102,15 +80,6 @@ This makes it useful for:
 - Computed versus inline state.
 - Reset-to-cascade behavior.
 - Search and explanations for CSS properties.
-
-### Help and guidance
-
-- In-product instructions modal.
-- Hotkeys modal.
-- First-run onboarding reopened from the header.
-- Delegated accessible tooltips.
-- Hover, focus and Escape dismissal behavior.
-- Reduced-motion support.
 
 ### Element insertion
 
@@ -210,7 +179,7 @@ Manual editing works without Ollama.
 From the repository root:
 
 ```powershell
-git clone https://github.com/mtv-astro/webdesign-ai-editor.git
+git clone https://github.com/selvalabs/webdesign-ai-editor.git
 cd webdesign-ai-editor
 
 .\scripts\bootstrap.ps1
@@ -541,4 +510,4 @@ Keep branches small and avoid stacking PRs unless the dependency is explicit. If
 
 ## License
 
-See `LICENSE`.
+MIT. See `LICENSE`.

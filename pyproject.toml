@@ -10,9 +10,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
-  { name = "Carlos Selva", email = "carlostselva@gmail.com" },
+  { name = "Carlos Silva" },
 ]
-keywords = ["playwright", "webdesign", "visual-editor", "ollama", "gemma"]
+keywords = ["playwright", "webdesign", "visual-editor", "ollama", "gemma", "local-first"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "License :: OSI Approved :: MIT License",
@@ -47,8 +47,8 @@ dev = [
 wda = "webdesign_ai_editor.cli:app"
 
 [project.urls]
-Repository = "https://github.com/mtv-astro/webdesign-ai-editor"
-Issues = "https://github.com/mtv-astro/webdesign-ai-editor/issues"
+Repository = "https://github.com/selvalabs/webdesign-ai-editor"
+Issues = "https://github.com/selvalabs/webdesign-ai-editor/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/webdesign_ai_editor"]
