@@ -5,3 +5,8 @@
 *.jpeg binary
 *.webp binary
 *.zip binary
+
+# GitHub Linguist
+# Built browser bundles are generated from editor-runtime/ and should not dominate language stats.
+src/webdesign_ai_editor/static/editor-runtime.js linguist-generated=true
+src/webdesign_ai_editor/static/editor-runtime*.map linguist-generated=true
